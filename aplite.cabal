@@ -25,7 +25,9 @@ source-repository head
 
 library
   exposed-modules:
+      Language
       Lib
+      Parser
   other-modules:
       Paths_aplite
   hs-source-dirs:
@@ -33,6 +35,7 @@ library
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
+    , megaparsec >=9.0.0 && <10
   default-language: Haskell2010
 
 executable aplite-exe
@@ -45,6 +48,7 @@ executable aplite-exe
   build-depends:
       aplite
     , base >=4.7 && <5
+    , megaparsec >=9.0.0 && <10
   default-language: Haskell2010
 
 test-suite aplite-test
@@ -56,6 +60,10 @@ test-suite aplite-test
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      aplite
+      HUnit ==1.6.*
+    , QuickCheck ==2.14.*
+    , aplite
     , base >=4.7 && <5
+    , hspec >=1.6.2
+    , megaparsec >=9.0.0 && <10
   default-language: Haskell2010
