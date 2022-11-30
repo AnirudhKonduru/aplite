@@ -10,12 +10,15 @@ import Language
     aplOperators,
   )
 import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
-import qualified Test.QuickCheck as QC
+
+
+-- | basic tests for the every parser
 
 test_number :: Test
 test_number =
-  TestList
-    [ 
+  "parsing numbers (ints)"
+  ~: TestList
+    [
       "number" ~: P.parse P.number "1" ~?= Right 1,
       "number" ~: P.parse P.number "-1" ~?= Right (-1),
       "positiveInt" ~: P.parse P.number "123" ~?= Right 123,
@@ -25,17 +28,102 @@ test_number =
 
 test_float :: Test
 test_float =
-  TestList
-    [ 
-      "float" ~: P.parse P.float "1" ~?= Right 1.0,
+  "parsing floats"
+  ~: TestList
+    [
+      "float" ~: P.parse P.float "1.0" ~?= Right 1.0,
+      "float" ~: P.parse P.float "-1.0" ~?= Right (-1.0),
+      "float" ~: P.parse P.float "0.567" ~?= Right 0.567,
+      "float" ~: P.parse P.float "-0.567" ~?= Right (-0.567),
       "positiveFloat" ~: P.parse P.float "123.456" ~?= Right 123.456,
       "negativeFloat" ~: P.parse P.float "-123.456" ~?= Right (-123.456),
-      "zeroFloat" ~: P.parse P.float "0.0" ~?= Right 0.0
+      "zeroFloat" ~: P.parse P.float "0.0" ~?= Right 0.0,
+      "zeroFloat" ~: P.parse P.float "-0.0" ~?= Right 0.0
     ]
 
-test_parser :: Test
-test_parser =
+test_scalar :: Test
+test_scalar =
+  "parsing scalars"
+  ~:
   TestList
-    [ 
-      "test1" ~: P.parse P.scalarParser "1" ~?= Right (IntVal 1)
+    [
+      "test" ~: P.parse P.scalarParser "1" ~?= Right (IntVal 1),
+      "test" ~: P.parse P.scalarParser "123" ~?= Right (IntVal 123),
+      "test" ~: P.parse P.scalarParser "-123" ~?= Right (IntVal (-123)),
+      "test" ~: P.parse P.scalarParser "0" ~?= Right (IntVal 0),
+      "test" ~: P.parse P.scalarParser "-0" ~?= Right (IntVal 0),
+      "test" ~: P.parse P.scalarParser "-0.0" ~?= Right (FloatVal 0.0),
+      "test" ~: P.parse P.scalarParser "0.0" ~?= Right (FloatVal 0.0),
+      "test" ~: P.parse P.scalarParser "1.0" ~?= Right (FloatVal 1.0),
+      "test" ~: P.parse P.scalarParser "12.0" ~?= Right (FloatVal 12.0),
+      "test" ~: P.parse P.scalarParser "123.0" ~?= Right (FloatVal 123.0),
+      "test" ~: P.parse P.scalarParser "-12.0" ~?= Right (FloatVal (-12.0)),
+      "test" ~: P.parse P.scalarParser "1.23" ~?= Right (FloatVal 1.23)
     ]
+
+
+test_value :: Test
+test_value =
+  "parsing value"
+  ~:
+  TestList
+    [
+      "test" ~: P.parse P.valueParser "1" ~?= Right (Scalar (IntVal 1)),
+      "test" ~: P.parse P.valueParser "123" ~?= Right (Scalar (IntVal 123)),
+      "test" ~: P.parse P.valueParser "-123" ~?= Right (Scalar (IntVal (-123))),
+      "test" ~: P.parse P.valueParser "0" ~?= Right (Scalar (IntVal 0)),
+      "test" ~: P.parse P.valueParser "-1.0" ~?= Right (Scalar (FloatVal (-1.0))),
+      "test" ~: P.parse P.valueParser "0.0" ~?= Right (Scalar (FloatVal 0.0))
+    ]
+
+test_values :: Test
+test_values =
+  "parsing values"
+  ~:
+  TestList
+    [
+      "test" ~: P.parse P.valuesParser "1 2 3" ~?= Right [Scalar (IntVal 1),Scalar (IntVal 2),Scalar (IntVal 3)],
+      "test" ~: P.parse P.valuesParser "1 2 3 4" ~?= Right [Scalar (IntVal 1),Scalar (IntVal 2),Scalar (IntVal 3),Scalar (IntVal 4)],
+      "test" ~: P.parse P.valuesParser "1.0 1" ~?= Right [Scalar (FloatVal 1.0),Scalar (IntVal 1)],
+      "test" ~: P.parse P.valuesParser "-1.1 3.14159265" ~?= Right [Scalar (FloatVal (-1.1)),Scalar (FloatVal 3.14159265)]
+    ]
+
+
+test_arrayOf :: Test
+test_arrayOf =
+  "testing array of"
+  ~:
+  TestList
+    [
+      "test" ~: P.arrayOf [Scalar (IntVal (-1))] ~?= Array [1] [Scalar (IntVal (-1))],
+      "test" ~: P.arrayOf [Scalar (IntVal 1),Scalar (IntVal 2),Scalar (IntVal 3)] ~?= Array [3] [Scalar (IntVal 1),Scalar (IntVal 2),Scalar (IntVal 3)],
+      "test" ~: P.arrayOf [] ~?= Array [0] []
+    ]
+
+test_array :: Test
+test_array =
+  "parsing arrays"
+  ~:
+  TestList
+    [
+      "test" ~: P.parse P.arrayParser "(1 2 3)" ~?= Right (Array [3] [Scalar (IntVal 1),Scalar (IntVal 2),Scalar (IntVal 3)]),
+      "test" ~: P.parse P.arrayParser "(1 2 3 4)" ~?= Right (Array [4] [Scalar (IntVal 1),Scalar (IntVal 2),Scalar (IntVal 3),Scalar (IntVal 4)]),
+      "test" ~: P.parse P.arrayParser "(1.0 1)" ~?= Right (Array [2] [Scalar (FloatVal 1.0),Scalar (IntVal 1)]),
+      "test" ~: P.parse P.arrayParser "(-1.1 3.14159265)" ~?= Right (Array [2] [Scalar (FloatVal (-1.1)),Scalar (FloatVal 3.14159265)])
+    ]
+
+test_operator :: Test
+test_operator =
+  "parsing operators"
+  ~:
+  TestList
+    [
+      "test" ~: P.parse P.operator "+" ~?= Right '+',
+      "test" ~: P.parse P.operator "-" ~?= Right '-',
+      "test" ~: P.parse P.operator "*" ~?= Right '*',
+      "test" ~: P.parse P.operator "⍝" ~?= Right '⍝',
+      "test" ~: P.parse P.operator "⍵" ~?= Right '⍵'
+    ]
+
+test_all_parsers :: IO Counts
+test_all_parsers = runTestTT $ TestList [test_number, test_float, test_scalar, test_value, test_values, test_arrayOf, test_array, test_operator]
