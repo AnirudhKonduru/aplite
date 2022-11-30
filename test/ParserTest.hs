@@ -125,5 +125,55 @@ test_operator =
       "test" ~: P.parse P.operator "⍵" ~?= Right '⍵'
     ]
 
+test_monadic :: Test
+test_monadic = 
+  "parsing monadic operators"
+  ~:
+  TestList 
+    [
+      "test" ~: P.parse P.monadicParser "-1" ~?= Right (Monadic (MSym '-') (Value (Scalar (IntVal 1)))),
+      "test" ~: P.parse P.monadicParser "∊ 1" ~?= Right (Monadic (MSym '∊') (Value (Scalar (IntVal 1))))
+    ]
+
+test_dyadic :: Test
+test_dyadic = 
+  "parsing dyadic operators"
+  ~:
+  TestList 
+    [
+      "test" ~: P.parse P.dyadicParser "1 + 2" ~?= Right (Dyadic (Value (Scalar (IntVal 1))) (DSym '+') (Value (Scalar (IntVal 2)))),
+      "test" ~: P.parse P.dyadicParser "1 ≠ 2" ~?= Right (Dyadic (Value (Scalar (IntVal 1))) (DSym '≠') (Value (Scalar (IntVal 2))))
+    ]
+
+
+
+test_operand :: Test
+test_operand =
+  "parsing operands"
+  ~:
+  TestList
+    [
+      "test" ~: P.parse P.operandParser "1" ~?= Right (Value (Scalar (IntVal 1))),
+      "test" ~: P.parse P.operandParser "1 2 3" ~?= Right (Value (Array [3] [Scalar (IntVal 1),Scalar (IntVal 2),Scalar (IntVal 3)])),
+      "test" ~: P.parse P.operandParser "1 2 3 4" ~?= Right (Value (Array [4] [Scalar (IntVal 1),Scalar (IntVal 2),Scalar (IntVal 3),Scalar (IntVal 4)])),
+      "test" ~: P.parse P.operandParser "1.0 1" ~?= Right (Value (Array [2] [Scalar (FloatVal 1.0),Scalar (IntVal 1)])),
+      "test" ~: P.parse P.operandParser "-1.1 3.14159265" ~?= Right (Value (Array [2] [Scalar (FloatVal (-1.1)),Scalar (FloatVal 3.14159265)])),
+      "test" ~: P.parse P.operandParser "1 + 2" ~?= Right (Dyadic (Value (Scalar (IntVal 1))) (DSym '+') (Value (Scalar (IntVal 2))))
+    ]
+
+test_expression :: Test
+test_expression = 
+  "parsing expressions"
+  ~:
+  TestList 
+    [
+      "test" ~: P.parse P.expressionParser "1 2 3" ~?= Right (Value (Array [3] [Scalar (IntVal 1),Scalar (IntVal 2),Scalar (IntVal 3)])),
+      "test" ~: P.parse P.expressionParser "1" ~?= Right (Value (Scalar (IntVal 1))),
+      "test" ~: P.parse P.expressionParser "-10.21" ~?= Right (Monadic (MSym '-') (Value (Scalar (FloatVal 10.21)))),
+      "test" ~: P.parse P.expressionParser "1 + 2" ~?= Right (Dyadic (Value (Scalar (IntVal 1))) (DSym '+') (Value (Scalar (IntVal 2)))),
+      "test" ~: P.parse P.expressionParser "1 + 2 - 3" ~?= Right (Dyadic (Value (Scalar (IntVal 1))) (DSym '+') (Dyadic (Value (Scalar (IntVal 2))) (DSym '-') (Value (Scalar (IntVal 3))))),
+      "test" ~: P.parse P.expressionParser "-1 + 2 - 2" ~?= Right (Monadic (MSym '-') (Dyadic (Value (Scalar (IntVal 1))) (DSym '+') (Dyadic (Value (Scalar (IntVal 2))) (DSym '-') (Value (Scalar (IntVal 2))))))
+    ]
+
 test_all_parsers :: IO Counts
 test_all_parsers = runTestTT $ TestList [test_number, test_float, test_scalar, test_value, test_values, test_arrayOf, test_array, test_operator]
