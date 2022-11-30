@@ -169,7 +169,8 @@ test_expression =
       "test" ~: P.parse P.expressionParser "-10.21" ~?= Right (Monadic (MSym '-') (Value (Scalar (FloatVal 10.21)))),
       "test" ~: P.parse P.expressionParser "1 + 2" ~?= Right (Dyadic (Value (Scalar (IntVal 1))) (DSym '+') (Value (Scalar (IntVal 2)))),
       "test" ~: P.parse P.expressionParser "1 + 2 - 3" ~?= Right (Dyadic (Value (Scalar (IntVal 1))) (DSym '+') (Dyadic (Value (Scalar (IntVal 2))) (DSym '-') (Value (Scalar (IntVal 3))))),
-      "test" ~: P.parse P.expressionParser "-1 + 2 - 2" ~?= Right (Monadic (MSym '-') (Dyadic (Value (Scalar (IntVal 1))) (DSym '+') (Dyadic (Value (Scalar (IntVal 2))) (DSym '-') (Value (Scalar (IntVal 2))))))
+      "test" ~: P.parse P.expressionParser "-1 + 2 - 2" ~?= Right (Monadic (MSym '-') (Dyadic (Value (Scalar (IntVal 1))) (DSym '+') (Dyadic (Value (Scalar (IntVal 2))) (DSym '-') (Value (Scalar (IntVal 2)))))),
+      "test" ~: P.parse P.expressionParser "(1 2) + (2 3)" ~?= Right (Dyadic (Value (Array [2] [Scalar (IntVal 1),Scalar (IntVal 2)])) (DSym '+') (Value (Array [2] [Scalar (IntVal 2),Scalar (IntVal 3)])))
     ]
 
 test_all_parsers :: IO Counts
