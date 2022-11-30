@@ -6,8 +6,7 @@ import Language
     Expression (..),
     Monadic (MSym),
     Scalar (..),
-    Value (..),
-    aplOperators,
+    Value (..)
   )
 import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
 
@@ -154,11 +153,9 @@ test_operand =
   TestList
     [
       "test" ~: P.parse P.operandParser "1" ~?= Right (Value (Scalar (IntVal 1))),
-      "test" ~: P.parse P.operandParser "1 2 3" ~?= Right (Value (Array [3] [Scalar (IntVal 1),Scalar (IntVal 2),Scalar (IntVal 3)])),
-      "test" ~: P.parse P.operandParser "1 2 3 4" ~?= Right (Value (Array [4] [Scalar (IntVal 1),Scalar (IntVal 2),Scalar (IntVal 3),Scalar (IntVal 4)])),
+      "test" ~: P.parse P.operandParser "(1 2 3)" ~?= Right (Value (Array [3] [Scalar (IntVal 1),Scalar (IntVal 2),Scalar (IntVal 3)])),
       "test" ~: P.parse P.operandParser "1.0 1" ~?= Right (Value (Array [2] [Scalar (FloatVal 1.0),Scalar (IntVal 1)])),
-      "test" ~: P.parse P.operandParser "-1.1 3.14159265" ~?= Right (Value (Array [2] [Scalar (FloatVal (-1.1)),Scalar (FloatVal 3.14159265)])),
-      "test" ~: P.parse P.operandParser "1 + 2" ~?= Right (Dyadic (Value (Scalar (IntVal 1))) (DSym '+') (Value (Scalar (IntVal 2))))
+      "test" ~: P.parse P.operandParser "-1.1 3.14159265" ~?= Right (Value (Array [2] [Scalar (FloatVal (-1.1)),Scalar (FloatVal 3.14159265)]))
     ]
 
 test_expression :: Test
@@ -176,4 +173,4 @@ test_expression =
     ]
 
 test_all_parsers :: IO Counts
-test_all_parsers = runTestTT $ TestList [test_number, test_float, test_scalar, test_value, test_values, test_arrayOf, test_array, test_operator]
+test_all_parsers = runTestTT $ TestList [test_number, test_float, test_scalar, test_value, test_values, test_arrayOf, test_array, test_operator, test_monadic, test_dyadic, test_operand, test_expression]
