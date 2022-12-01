@@ -20,7 +20,7 @@ type Parser = Parsec Void String
 parse :: Parser a -> String -> Either (ParseErrorBundle String Void) a
 parse p = runParser p ""
 
--- Parse a positive or negative integer
+-- | Parse a positive or negative integer
 number :: Parser Int
 number = lexeme $ do
   sign <- option '+' (oneOf "+-")
@@ -31,13 +31,16 @@ number = lexeme $ do
 char :: Char -> Parser Char
 char c = lexeme (C.char c)
 
--- Parse a positive or negative float
+-- | Parse a positive or negative float
 float :: Parser Float
 float = do
   sign <- option '+' (oneOf "+-")
   fstr <- (++) <$> option "0" (some numberChar) <*> ((:) <$> char '.' <*> some numberChar)
   let n = read fstr
   return $ if sign == '-' then -n else n
+
+box :: Parser Box
+box = undefined
 
 sc :: Parser ()
 sc =
@@ -54,15 +57,19 @@ parsec's try combinator is used to try a parser, if it fails, it backtracks to t
 this is necessary because Parsec by default only does LL(1) parsing, which means it only looks at the first character of a token
 -}
 
+-- | Parse a scalar value (Int or Float for now)
 scalarParser :: Parser Scalar
 scalarParser = lexeme $ try (FloatVal <$> float) <|> (IntVal <$> number)
 
+-- | Parse a value (Scalar, Array, or Expression)
 valueParser :: Parser Value
 valueParser = naked $ lexeme $ try arrayParser <|> Scalar <$> scalarParser
 
+-- | Parse an array
 arrayParser :: Parser Value
 arrayParser = naked $ lexeme $ arrayOf <$> valuesParser
 
+-- | Parse a list of values into an array
 arrayOf :: [Value] -> Value
 arrayOf vs = Array [length vs] vs
 
@@ -72,6 +79,7 @@ enclosed = between (char '(') (char ')')
 naked :: Parser a -> Parser a
 naked p = try (enclosed p) <|> p
 
+-- | identifies operators
 operator :: Parser Char
 operator = lexeme $ oneOf aplOperators
 
@@ -81,11 +89,13 @@ valuesParser = (:) <$> singleValueParser <*> some singleValueParser
   where
     singleValueParser = try (arrayOf <$> enclosed valuesParser) <|> try (Scalar <$> scalarParser) <|> try (Expression <$> enclosed expressionParser)
 
+-- | Parse a monadic operator
 monadicParser :: Parser Expression
 monadicParser = lexeme $ do
   op <- MSym <$> operator
   Monadic op <$> expressionParser
 
+-- | Parse a dyadic operator
 dyadicParser :: Parser Expression
 dyadicParser = lexeme $ do
   left <- operandParser
@@ -95,5 +105,6 @@ dyadicParser = lexeme $ do
 operandParser :: Parser Expression
 operandParser = try (enclosed expressionParser) <|> try (Value <$> valueParser)
 
+-- | Parse an expression
 expressionParser :: Parser Expression
 expressionParser = lexeme $ try monadicParser <|> try dyadicParser <|> operandParser

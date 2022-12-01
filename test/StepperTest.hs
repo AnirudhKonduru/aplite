@@ -18,6 +18,6 @@ stepTests =
     [ 
       "test" ~: step (Value (Scalar (IntVal 1))) Map.empty ~?= (Right (Value (Scalar (IntVal 1))), Map.empty),
       "test" ~: step (Variable "x") Map.empty ~?= (Left (UndefinedVariable "x"), Map.empty),
-      "test" ~: step (Monadic (MSym '⍵') (Variable "x")) Map.empty ~?= (Left (UndefinedVariable "x"), Map.empty), -- TODO: this will fail
-      "test" ~: step (Dyadic (Variable "x") (DSym '⍵') (Variable "x")) Map.empty ~?= (Left (UndefinedVariable "x"), Map.empty) -- TODO: this will fail
+      "test" ~: step (Monadic (MSym '⍵') (Variable "x")) Map.empty ~?= (Left (UndefinedVariable "x"), Map.empty),
+      "test" ~: step (Dyadic (Variable "x") (DSym '⍵') (Variable "x")) Map.empty ~?= (Left (UndefinedVariable "x"), Map.empty)
     ]

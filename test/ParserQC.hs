@@ -60,6 +60,17 @@ instance Arbitrary Expression where
   arbitrary = genExpression
   shrink = const []
 
+instance Arbitrary Monadic where
+  arbitrary = genMonadic
+  shrink = const []
+
+
+instance Arbitrary Dyadic where
+  arbitrary = genDyadic
+  shrink = const []
+
+
+
 
 prop_number :: Int -> Bool
 prop_number n =  P.parse P.number (show n) == Right n
