@@ -1,4 +1,6 @@
-module ParserTest (module ParserTest) where
+{-# OPTIONS_GHC -Wno-unused-imports #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
+module ParserQC (module ParserQC) where
 
 import qualified Parser as P
 import Language
@@ -11,16 +13,74 @@ import Language
   )
 import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
 import qualified Test.QuickCheck as QC
+import Test.QuickCheck (Arbitrary)
 
--- | quickcheck property for number parser
-prop_number :: QC.Property
-prop_number = QC.forAll QC.arbitrary $ \x -> P.parse P.number (show x) == Right x
 
--- | quickcheck property for float parser
-prop_float :: QC.Property
-prop_float = QC.forAll QC.arbitrary $ \x -> P.parse P.float (show x) == Right x
+genScalar :: QC.Gen Scalar
+genScalar = do
+  int <- QC.arbitrary
+  float <- QC.arbitrary
+  QC.oneof [return $ IntVal int, return $ FloatVal float]
+
+genValue :: QC.Gen Value
+genValue = do
+  scalar <- genScalar
+  int <- QC.arbitrary
+  value <- genValue
+  QC.oneof [return $ Scalar scalar, return $ Array [int] [value]]
+
+genExpression :: QC.Gen Expression
+genExpression = do
+  value <- genValue
+  monadic <- genMonadic
+  dyadic <- genDyadic
+  expression <- genExpression
+  QC.oneof [return $ Value value, return $ Monadic monadic expression, return $ Dyadic expression dyadic expression]
+
+genMonadic :: QC.Gen Monadic
+genMonadic = do
+  char <- QC.elements aplOperators
+  return $ MSym char
+
+genDyadic :: QC.Gen Dyadic
+genDyadic = do
+  char <- QC.elements aplOperators
+  return $ DSym char
+
+instance Arbitrary Scalar where
+  arbitrary = genScalar
+  shrink = const []
+
+
+instance Arbitrary Value where
+  arbitrary = genValue
+  shrink = const []
+
+
+instance Arbitrary Expression where
+  arbitrary = genExpression
+  shrink = const []
+
+
+prop_number :: Int -> Bool
+prop_number n =  P.parse P.number (show n) == Right n
+
+prop_float :: Float -> Bool
+prop_float f = P.parse P.float (show f) == Right f
+
+prop_expression :: Expression -> Bool
+prop_expression e = P.parse P.expressionParser (show e) == Right e
+
+prop_monadic :: Expression -> Bool
+prop_monadic m = P.parse P.monadicParser (show m) == Right m
+
 
 qc :: IO ()
 qc = do
-  putStrLn "prop_number"
+  putStrLn "Running quickcheck tests"
+  putStr "Number parser: "
   QC.quickCheck prop_number
+  putStr "Float parser: "
+  QC.quickCheck prop_float
+  putStr "Expression parser: "
+  QC.quickCheck prop_expression

@@ -1,11 +1,14 @@
+{-# OPTIONS_GHC -Wno-unused-imports #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 import Data.Void
 import Language
 import qualified Parser
-import Test.HUnit
 import qualified Test.HUnit as H
 import Test.Hspec
 import Test.QuickCheck
 import Text.Megaparsec
+import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
+
 
 makeTest :: (Eq a, Show a) => Parser.Parser a -> String -> a -> Test
 makeTest p src expected = H.TestLabel src $ H.TestCase $ do
@@ -16,13 +19,14 @@ makeTest p src expected = H.TestLabel src $ H.TestCase $ do
 
 main :: IO ()
 main = hspec $ do
-  describe "number parser tests" $ do
+  describe "parse a number" $ do
     it "parses a number with a +ve sign" $ do parse Parser.number "" "123" `shouldBe` Right 123
     it "parses a number with -ve sign" $ do parse Parser.number "" "-123" `shouldBe` Right (-123)
+    it "parses zero" $ do parse Parser.number "" "0" `shouldBe` Right 0
     it "parses a number without sign" $ do parse Parser.number "" "+123" `shouldBe` Right 123
     it "parses a number with trailing decimal" $ do parse Parser.number "" "123." `shouldBe` Right 123
 
-  describe "float parser tests" $ do
+  describe "parse a float" $ do
     it "parses a float with a +ve sign" $ do parse Parser.float "" "123.456" `shouldBe` Right 123.456
     it "parses a float with -ve sign" $ do parse Parser.float "" "-123.456" `shouldBe` Right (-123.456)
     it "parses a float without sign" $ do parse Parser.float "" "+123.456" `shouldBe` Right 123.456
@@ -34,15 +38,20 @@ main = hspec $ do
 
   describe "parse simple array values" $ do
     it "parses an array #1" $ do parse Parser.arrayParser "" "1 2 3" `shouldBe` Right (Array [3] [Scalar $ IntVal 1, Scalar $ IntVal 2, Scalar $ IntVal 3])
-    it "parses an array #2" $ do parse Parser.arrayParser "" "1 2 4.3 14" `shouldBe` Right (Array [4] [Scalar $ IntVal 1, Scalar $ IntVal 2, Scalar $ FloatVal 4.3, Scalar $ IntVal 14])
+    it "parses an array #2" $ do parse Parser.arrayParser "" "1 0.2 4.3 14" `shouldBe` Right (Array [4] [Scalar $ IntVal 1, Scalar $ FloatVal 0.2, Scalar $ FloatVal 4.3, Scalar $ IntVal 14])
 
   describe "parse nested array values" $ do
     it "parses a nested array #1" $ do parse Parser.arrayParser "" "1 2 (3 4)" `shouldBe` Right (Array [3] [Scalar $ IntVal 1, Scalar $ IntVal 2, Array [2] [Scalar $ IntVal 3, Scalar $ IntVal 4]])
     it "parses a nested array #2" $ do parse Parser.arrayParser "" "1 2 (3.1 (0.4 2)) 5" `shouldBe` Right (Array [4] [Scalar $ IntVal 1, Scalar $ IntVal 2, Array [2] [Scalar $ FloatVal 3.1, Array [2] [Scalar $ FloatVal 0.4, Scalar $ IntVal 2]], Scalar $ IntVal 5])
 
+  describe "parse a single value" $ do
+    it "parses a scalar value" $ do parse Parser.valueParser "" "123" `shouldBe` Right (Scalar $ IntVal 123)
+    it "parses an array value" $ do parse Parser.valueParser "" "1 2 3" `shouldBe` Right (Array [3] [Scalar $ IntVal 1, Scalar $ IntVal 2, Scalar $ IntVal 3])
+
   describe "parse series of values" $ do
     it "parses a series of values" $ do parse Parser.valuesParser "" "1 2 3" `shouldBe` Right [Scalar (IntVal 1), Scalar (IntVal 2), Scalar (IntVal 3)]
     it "parse a series of values of different types" $ do parse Parser.valuesParser "" "1 2 3 4.5" `shouldBe` Right [Scalar (IntVal 1), Scalar (IntVal 2), Scalar (IntVal 3), Scalar (FloatVal 4.5)]
+
 
   describe "parse an expression" $ do
     it "parses a monadic expression" $ do parse Parser.expressionParser "" "+ 10" `shouldBe` Right (Monadic (MSym '+') (Value (Scalar (IntVal 10))))
