@@ -22,22 +22,28 @@ parse p = runParser p ""
 
 -- Parse a positive or negative integer
 number :: Parser Int
-number = lexeme $ do
-  sign <- option '+' (oneOf "+-")
-  digits <- some numberChar
-  let n = read digits
-  return $ if sign == '-' then -n else n
+number =
+  lexeme $
+    -- note that APL uses the high minus '¯' as a negative sign, not '-'
+    try (negate . read <$> (C.char '¯' *> number'))
+      <|> try (read <$> number')
+  where
+    number' :: Parser [Char]
+    number' = some numberChar
 
 char :: Char -> Parser Char
 char c = lexeme (C.char c)
 
 -- Parse a positive or negative float
 float :: Parser Float
-float = do
-  sign <- option '+' (oneOf "+-")
-  fstr <- (++) <$> option "0" (some numberChar) <*> ((:) <$> char '.' <*> some numberChar)
-  let n = read fstr
-  return $ if sign == '-' then -n else n
+float =
+  lexeme $
+    -- note that APL uses the high minus '¯' as a negative sign, not '-'
+    try (negate . read <$> (C.char '¯' *> float'))
+      <|> try (read <$> float')
+  where
+    float' :: Parser [Char]
+    float' = (++) <$> option "0" (some numberChar) <*> ((:) <$> char '.' <*> some numberChar)
 
 sc :: Parser ()
 sc =
@@ -55,45 +61,87 @@ this is necessary because Parsec by default only does LL(1) parsing, which means
 -}
 
 scalarParser :: Parser Scalar
-scalarParser = lexeme $ try (FloatVal <$> float) <|> (IntVal <$> number)
+scalarParser =
+  lexeme $
+    try (FloatVal <$> float)
+      <|> try (IntVal <$> number)
 
 valueParser :: Parser Value
-valueParser = naked $ lexeme $ try arrayParser <|> Scalar <$> scalarParser
+valueParser = lexeme $ try arrayParser <|> try (Scalar <$> scalarParser)
 
 arrayParser :: Parser Value
-arrayParser = naked $ lexeme $ arrayOf <$> valuesParser
+arrayParser = naked $ lexeme $ try (arrayOf <$> valuesParser)
 
 arrayOf :: [Value] -> Value
 arrayOf vs = Array [length vs] vs
 
 enclosed :: Parser a -> Parser a
-enclosed = between (char '(') (char ')')
+enclosed = lexeme . between (char '(') (char ')')
 
 naked :: Parser a -> Parser a
-naked p = try (enclosed p) <|> p
+naked p = lexeme $ try (enclosed p) <|> p
 
 operator :: Parser Char
 operator = lexeme $ oneOf aplOperators
 
 -- parse a list of space separated values
 valuesParser :: Parser [Value]
-valuesParser = (:) <$> singleValueParser <*> some singleValueParser
+valuesParser = try $ (:) <$> singleValueParser <*> some singleValueParser
   where
-    singleValueParser = try (arrayOf <$> enclosed valuesParser) <|> try (Scalar <$> scalarParser) <|> try (Expression <$> enclosed expressionParser)
+    singleValueParser :: Parser Value
+    singleValueParser = try (enclosed arrayParser) <|> try (Scalar <$> scalarParser)
 
 monadicParser :: Parser Expression
 monadicParser = lexeme $ do
   op <- MSym <$> operator
-  Monadic op <$> expressionParser
+  EMonadic op <$> expressionParser
 
 dyadicParser :: Parser Expression
 dyadicParser = lexeme $ do
   left <- operandParser
   op <- DSym <$> operator
-  Dyadic left op <$> expressionParser
+  EDyadic left op <$> expressionParser
+
+variableParser :: Parser String
+variableParser = lexeme $ (:) <$> C.letterChar <*> many C.alphaNumChar
 
 operandParser :: Parser Expression
-operandParser = try (enclosed expressionParser) <|> try (Value <$> valueParser)
+operandParser =
+  try (enclosed expressionParser)
+    <|> try (EValue <$> valueParser)
+    <|> try (EArray <$> many expressionParser)
+    <|> try (EVariable <$> variableParser)
+
+eValueParser :: Parser Expression
+eValueParser =
+  lexeme $
+    try
+      ( EArray
+          <$> many
+            ( try (enclosed expressionParser)
+                <|> try (EArray <$> many expressionParser)
+                <|> try (EValue . Scalar <$> scalarParser)
+                <|> try (EVariable <$> variableParser)
+            )
+      )
+
+-- <|> try (EValue <$> arrayParser)
+-- try (EArray <$> many expressionParser)
+--  <|> try (EValue <$> valueParser)
+--  <|> try (EArray <$> many expressionParser)
+
+
+-- parse a list of space separated values
+valuesParser' :: Parser [Expression]
+valuesParser' = (:) <$> singleValueParser <*> some singleValueParser
+  where
+    singleValueParser = try (EArray <$> enclosed valuesParser') <|> try (EValue . Scalar <$> scalarParser) <|> try (enclosed expressionParser)
 
 expressionParser :: Parser Expression
-expressionParser = lexeme $ try monadicParser <|> try dyadicParser <|> operandParser
+expressionParser =
+  lexeme $
+    try monadicParser
+      <|> try dyadicParser
+      <|> try (enclosed expressionParser)
+      <|> try (EArray <$> valuesParser')
+      <|> try (EValue . Scalar <$> scalarParser)

@@ -13,12 +13,11 @@ data Value
   | -- The first [Int] is the shape of the array, it's length is the rank of the array
     -- The second [a] is the values of the array
     Array [Int] [Value]
-  | Expression Expression
   deriving (Show, Eq)
 
 -- APL operators, a non-exhaustive list
 aplOperators :: String
-aplOperators = "¨¯<≤=>≠∨∧×÷?⍵∊⍴~↑↓⍳○*←→⊢⍺⌈⌊_ ∇ ∆∘'⎕⍎⍕⊂⊥⊤|⍝⍀⌿!@#$%^&*_+-/:\"<>?"
+aplOperators = "¨<≤=>≠∨∧×÷?⍵∊⍴~↑↓⍳○*←→⊢⍺⌈⌊_∇ ∆∘'⎕⍎⍕⊂⊥⊤|⍝⍀⌿!@#$%^&*_+-/:<>?"
 
 -- type Array a = Matrix a { row :: 1 }
 newtype Monadic = MSym Char
@@ -28,8 +27,16 @@ newtype Dyadic = DSym Char
   deriving (Show, Eq)
 
 data Expression
-  = Variable String
-  | Value Value
-  | Monadic Monadic Expression
-  | Dyadic Expression Dyadic Expression
+  = EVariable String
+  | EValue Value
+  | EMonadic Monadic Expression
+  | EDyadic Expression Dyadic Expression
+  | EBind String Expression
+  | EArray [Expression]
   deriving (Show, Eq)
+
+data Command = String
+
+data Input
+  = IExpression Expression
+  | ICommand Command
