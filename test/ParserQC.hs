@@ -51,7 +51,6 @@ instance Arbitrary Scalar where
   arbitrary = genScalar
   shrink = const []
 
-
 instance Arbitrary Value where
   arbitrary = genValue
   shrink = const []
@@ -82,5 +81,3 @@ qc = do
   QC.quickCheck prop_number
   putStr "Float parser: "
   QC.quickCheck prop_float
-  putStr "Expression parser: "
-  QC.quickCheck prop_expression
