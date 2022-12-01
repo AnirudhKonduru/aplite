@@ -15,7 +15,10 @@ makeTest p src expected = H.TestLabel src $ H.TestCase $ do
     Right got -> H.assertEqual src expected got
 
 main :: IO ()
-main = hspec $ do
+main = hspec $ x
+
+x :: Spec
+x = do
   describe "number parser tests" $ do
     it "parses a number with a +ve sign" $ do parse Parser.number "" "123" `shouldBe` Right 123
     it "parses a number with -ve sign" $ do parse Parser.number "" "-123" `shouldBe` Right (-123)
