@@ -1,5 +1,4 @@
 {-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
 module ParserQC (module ParserQC) where
 
 import qualified Parser as P
@@ -68,8 +67,6 @@ instance Arbitrary Monadic where
 instance Arbitrary Dyadic where
   arbitrary = genDyadic
   shrink = const []
-
-
 
 
 prop_number :: Int -> Bool

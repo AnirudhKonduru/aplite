@@ -39,9 +39,6 @@ float = do
   let n = read fstr
   return $ if sign == '-' then -n else n
 
-box :: Parser Box
-box = undefined
-
 sc :: Parser ()
 sc =
   L.space
