@@ -127,3 +127,4 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,haskell,osx,macos,linux,windows
+aplite.cabal
