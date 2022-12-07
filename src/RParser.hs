@@ -13,7 +13,6 @@ import Text.Megaparsec
 import Text.Megaparsec.Char (numberChar)
 import qualified Text.Megaparsec.Char as C
 import qualified Text.Megaparsec.Char.Lexer as L
-import Text.ParserCombinators.ReadP (chainr1)
 
 type Parser = Parsec Void String
 
@@ -24,27 +23,35 @@ parse p = runParser p ""
 -- Parse a positive or negative integer
 number :: Parser Int
 number =
-  lexeme $
+  lexeme $ do
     -- note that APL uses the high minus '¯' as a negative sign, not '-'
-    try (negate . read <$> (C.char '¯' *> number'))
-      <|> try (read <$> number')
+    numAbs <- read <$> number'
+    maybeSign <- optional $ C.char '¯'
+    case maybeSign of
+      Just _ -> return $ negate numAbs
+      Nothing -> return numAbs
   where
     number' :: Parser [Char]
-    number' = some numberChar
+    number' = reverse <$> some numberChar
 
 char :: Char -> Parser Char
 char c = lexeme (C.char c)
 
 -- Parse a positive or negative float
 float :: Parser Float
-float =
-  lexeme $
+float = lexeme $ do 
     -- note that APL uses the high minus '¯' as a negative sign, not '-'
-    try (negate . read <$> (C.char '¯' *> float'))
-      <|> try (read <$> float')
-  where
-    float' :: Parser [Char]
-    float' = (++) <$> option "0" (some numberChar) <*> ((:) <$> char '.' <*> some numberChar)
+      -- fractional part
+      frac <- reverse <$> some numberChar
+      -- decimal point
+      _ <- char '.'
+      -- integer part
+      whole <- reverse <$> option "0" (some numberChar)
+      let absFloat = read $ whole ++ "." ++ frac
+      maybeSign <- optional $ C.char '¯'
+      case maybeSign of
+        Just _ -> return $ negate absFloat
+        Nothing -> return absFloat
 
 sc :: Parser ()
 sc =
@@ -99,7 +106,7 @@ monadicParser = lexeme $ do
 
 dyadicParser :: Parser Expression
 dyadicParser = lexeme $ do
-  lexp <- chainr1 expressionParser (lexeme $ DSym <$> operator)
+  left <- expressionParser
   op <- DSym <$> operator
   EDyadic left op <$> expressionParser
 

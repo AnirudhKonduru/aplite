@@ -28,6 +28,7 @@ library
       Language
       Lib
       Parser
+      RParser
   other-modules:
       Paths_aplite
   hs-source-dirs:
