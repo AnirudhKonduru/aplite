@@ -7,13 +7,12 @@ import Language
     Monadic (MSym),
     Scalar (..),
     Value (..),
-    aplOperators,
+    aplFunctions,
   )
 import Text.Megaparsec
 import Text.Megaparsec.Char (numberChar)
 import qualified Text.Megaparsec.Char as C
 import qualified Text.Megaparsec.Char.Lexer as L
-import Text.ParserCombinators.ReadP (chainr1)
 
 type Parser = Parsec Void String
 
@@ -64,8 +63,8 @@ this is necessary because Parsec by default only does LL(1) parsing, which means
 scalarParser :: Parser Scalar
 scalarParser =
   lexeme $
-    try (FloatVal <$> float)
-      <|> try (IntVal <$> number)
+    try (Number <$> float)
+      <|> try (Number . toEnum <$> number)
 
 valueParser :: Parser Value
 valueParser = lexeme $ try arrayParser <|> try (Scalar <$> scalarParser)
@@ -83,7 +82,7 @@ naked :: Parser a -> Parser a
 naked p = lexeme $ try (enclosed p) <|> p
 
 operator :: Parser Char
-operator = lexeme $ oneOf aplOperators
+operator = lexeme $ oneOf aplFunctions
 
 -- parse a list of space separated values
 valuesParser :: Parser [Value]
@@ -95,13 +94,10 @@ valuesParser = try $ (:) <$> singleValueParser <*> some singleValueParser
 monadicParser :: Parser Expression
 monadicParser = lexeme $ do
   op <- MSym <$> operator
-  EMonadic op <$> expressionParser
+  undefined -- EMonadic op <$> expressionParser
 
 dyadicParser :: Parser Expression
-dyadicParser = lexeme $ do
-  lexp <- chainr1 expressionParser (lexeme $ DSym <$> operator)
-  op <- DSym <$> operator
-  EDyadic left op <$> expressionParser
+dyadicParser = undefined -- lexeme $ chainr1 expressionParser dyadicExpParser
 
 variableParser :: Parser String
 variableParser = lexeme $ (:) <$> C.letterChar <*> many C.alphaNumChar
@@ -131,12 +127,16 @@ eValueParser =
 --  <|> try (EValue <$> valueParser)
 --  <|> try (EArray <$> many expressionParser)
 
-
 -- parse a list of space separated values
 valuesParser' :: Parser [Expression]
 valuesParser' = try $ (:) <$> singleValueParser <*> some singleValueParser
   where
     singleValueParser = try (EArray <$> enclosed valuesParser') <|> try (EValue . Scalar <$> scalarParser) <|> try (enclosed expressionParser)
+
+dyadicExpParser :: Parser (Expression -> Expression -> Expression)
+dyadicExpParser = do
+  op <- DSym <$> operator
+  undefined -- return $ flip EDyadic op
 
 expressionParser :: Parser Expression
 expressionParser =

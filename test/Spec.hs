@@ -1,4 +1,3 @@
-import Data.Void
 import Language
 import qualified Parser
 import Test.HUnit

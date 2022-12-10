@@ -3,7 +3,35 @@
 # For more information, please see the documentation at:
 #   https://docs.haskellstack.org/en/stable/lock_files
 
-packages: []
+packages:
+- completed:
+    hackage: gamma-0.10.0.0@sha256:0d666fc486899a2e22f44aec1aa32c168e0803e6c2ddb266a18a07700ca5d95b,2051
+    pantry-tree:
+      sha256: 696ffa11ea5b4f707aadeea0453ff89e938d4a55fc8629d9700b37d07aeda2bb
+      size: 925
+  original:
+    hackage: gamma-0.10.0.0@sha256:0d666fc486899a2e22f44aec1aa32c168e0803e6c2ddb266a18a07700ca5d95b,2051
+- completed:
+    hackage: continued-fractions-0.10.0.2@sha256:82808ad1721046ca406659331402c5d894946d974f9ba4925931e9c7e6934549,1782
+    pantry-tree:
+      sha256: a71c87f48b29acb49ae1d85ce4a0fd86763411657c5bcadec78abb070ac6b94c
+      size: 400
+  original:
+    hackage: continued-fractions-0.10.0.2@sha256:82808ad1721046ca406659331402c5d894946d974f9ba4925931e9c7e6934549,1782
+- completed:
+    hackage: converge-0.1.0.1@sha256:47e5534a30ab798062012c003df12efcb9b3fbc63ac4f80525dcfc70737f1dc0,1203
+    pantry-tree:
+      sha256: ab6d6806d42f704168db1e9a52893daff67fd2d5b98f915a17e69d158492ccf6
+      size: 176
+  original:
+    hackage: converge-0.1.0.1@sha256:47e5534a30ab798062012c003df12efcb9b3fbc63ac4f80525dcfc70737f1dc0,1203
+- completed:
+    hackage: orthotope-0.1.2.0@sha256:bc541ef055c3ad4adeb8617d6727a96778b8aff02c84989a59d3a69d65961f76,2915
+    pantry-tree:
+      sha256: ba29d3f95445cc5460488aafe13119fc0dae6616842d3e41ce40a152d3e9c12a
+      size: 2555
+  original:
+    hackage: orthotope-0.1.2.0@sha256:bc541ef055c3ad4adeb8617d6727a96778b8aff02c84989a59d3a69d65961f76,2915
 snapshots:
 - completed:
     sha256: 6d1532d40621957a25bad5195bfca7938e8a06d923c91bc52aa0f3c41181f2d4
