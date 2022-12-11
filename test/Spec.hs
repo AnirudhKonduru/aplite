@@ -2,6 +2,7 @@ import Language
 import MkParser (parse')
 import qualified MkParser as Parser
 import Test.Hspec
+import qualified BuiltInFunctions as Bif
 
 main :: IO ()
 main = hspec $ do
@@ -32,9 +33,14 @@ main = hspec $ do
     it "parse a series of values of different types" $ do parse' Parser.valuesParser "1 2 3 4.5" `shouldBe` [Scalar (Number 1), Scalar (Number 2), Scalar (Number 3), Scalar (Number 4.5)]
 
   describe "parse an expression" $ do
-    it "parses a monadic expression" $ do parse' Parser.expressionParser "+ 10" `shouldBe` EMonadic (BuiltInMonadic "+" "plus" id) (EArray [EValue (Scalar (Number 10.0))])
-    it "parses a monadic expression #2" $ do parse' Parser.expressionParser "+ 1 2 3" `shouldBe` EMonadic (BuiltInMonadic "+" "plus" id) (EArray [EValue (Scalar (Number 1.0)), EValue (Scalar (Number 2.0)), EValue (Scalar (Number 3.0))])
-    it "parses a monadic expression with mixed types" $ do parse' Parser.expressionParser "+ 1 2 (3 4.5 (5 7 8) (- 5 2)) 9" `shouldBe` EMonadic (BuiltInMonadic "+" "plus" id) (EArray [EValue (Scalar (Number 1)), EValue (Scalar (Number 2)), EArray [EValue (Scalar (Number 3)), EValue (Scalar (Number 4.5)), EArray [EValue (Scalar (Number 5)), EValue (Scalar (Number 7)), EValue (Scalar (Number 8))], EMonadic (BuiltInMonadic "-" "negate" id) (EArray [EValue (Scalar (Number 5)), EValue (Scalar (Number 2))])], EValue (Scalar (Number 9))])
-    it "parses a dyadic expression" $ do parse' Parser.expressionParser "1 + 2" `shouldBe` EDyadic (BuiltInDyadic "+" "add" const) (EArray [EValue $ Scalar (Number 1)]) (EArray [EValue (Scalar (Number 2))])
-    it "parses a dyadic expression #2" $ do parse' Parser.expressionParser "1 5 6 + 2 3 8" `shouldBe` EDyadic (BuiltInDyadic "+" "add" const) (EArray [EValue (Scalar (Number 1.0)), EValue (Scalar (Number 5.0)), EValue (Scalar (Number 6.0))]) (EArray [EValue (Scalar (Number 2.0)), EValue (Scalar (Number 3.0)), EValue (Scalar (Number 8.0))])
-    it "parses a dyadic expression with mixed types" $ do parse' Parser.expressionParser "2 3 (4 5.6 (7 8 9) (- 10 11)) 12 + 1 (- 10 11) (4 5)" `shouldBe` EDyadic (BuiltInDyadic "+" "add" const) (EArray [EValue (Scalar (Number 2.0)), EValue (Scalar (Number 3.0)), EArray [EValue (Scalar (Number 4.0)), EValue (Scalar (Number 5.6)), EArray [EValue (Scalar (Number 7.0)), EValue (Scalar (Number 8.0)), EValue (Scalar (Number 9.0))], EMonadic (BuiltInMonadic "-" "negate" id) (EArray [EValue (Scalar (Number 10.0)), EValue (Scalar (Number 11.0))])], EValue (Scalar (Number 12.0))]) (EArray [EValue (Scalar (Number 1.0)), EMonadic (BuiltInMonadic "-" "negate" id) (EArray [EValue (Scalar (Number 10.0)), EValue (Scalar (Number 11.0))]), EArray [EValue (Scalar (Number 4.0)), EValue (Scalar (Number 5.0))]])
+    it "parses a monadic expression" $ do parse' Parser.expressionParser "+ 10" `shouldBe` EMonadic Bif.conjugate (EArray [EValue (Scalar (Number 10.0))])
+    it "parses a monadic expression #2" $ do parse' Parser.expressionParser "+ 1 2 3" `shouldBe` EMonadic Bif.conjugate (EArray [EValue (Scalar (Number 1.0)), EValue (Scalar (Number 2.0)), EValue (Scalar (Number 3.0))])
+    it "parses a monadic expression with mixed types" $ do parse' Parser.expressionParser "+ 1 2 (3 4.5 (5 7 8) (- 5 2)) 9" `shouldBe` EMonadic Bif.conjugate (EArray [EValue (Scalar (Number 1)), EValue (Scalar (Number 2)), EArray [EValue (Scalar (Number 3)), EValue (Scalar (Number 4.5)), EArray [EValue (Scalar (Number 5)), EValue (Scalar (Number 7)), EValue (Scalar (Number 8))], EMonadic Bif.negate (EArray [EValue (Scalar (Number 5)), EValue (Scalar (Number 2))])], EValue (Scalar (Number 9))])
+    it "parses a dyadic expression" $ do parse' Parser.expressionParser "1 + 2" `shouldBe` EDyadic Bif.plus (EArray [EValue $ Scalar (Number 1)]) (EArray [EValue (Scalar (Number 2))])
+    it "parses a dyadic expression #2" $ do parse' Parser.expressionParser "1 5 6 + 2 3 8" `shouldBe` EDyadic Bif.plus (EArray [EValue (Scalar (Number 1.0)), EValue (Scalar (Number 5.0)), EValue (Scalar (Number 6.0))]) (EArray [EValue (Scalar (Number 2.0)), EValue (Scalar (Number 3.0)), EValue (Scalar (Number 8.0))])
+    it "parses a dyadic expression with mixed types" $ do parse' Parser.expressionParser "2 3 (4 5.6 (7 8 9) (- 10 11)) 12 + 1 (- 10 11) (4 5)" `shouldBe` EDyadic Bif.plus (EArray [EValue (Scalar (Number 2.0)), EValue (Scalar (Number 3.0)), EArray [EValue (Scalar (Number 4.0)), EValue (Scalar (Number 5.6)), EArray [EValue (Scalar (Number 7.0)), EValue (Scalar (Number 8.0)), EValue (Scalar (Number 9.0))], EMonadic Bif.negate (EArray [EValue (Scalar (Number 10.0)), EValue (Scalar (Number 11.0))])], EValue (Scalar (Number 12.0))]) (EArray [EValue (Scalar (Number 1.0)), EMonadic Bif.negate (EArray [EValue (Scalar (Number 10.0)), EValue (Scalar (Number 11.0))]), EArray [EValue (Scalar (Number 4.0)), EValue (Scalar (Number 5.0))]])
+    it "parses function prescedence corrctly" $ do parse' Parser.expressionParser "⍴ 2 3 ⍴ 3 4 5" `shouldBe` EMonadic Bif.shape (EDyadic Bif.reshape (EArray [EValue (Scalar (Number 2.0)),EValue (Scalar (Number 3.0))]) (EArray [EValue (Scalar (Number 3.0)),EValue (Scalar (Number 4.0)),EValue (Scalar (Number 5.0))]))
+
+  describe "parse function expressions" $ do
+    it "parses a monadic operator with dyadic function" $ do parse' Parser.expressionParser "+/ 1 2 3" `shouldBe` EMonadic (BuiltInMonadic "+/" "reducePlus" id) (EArray [EValue (Scalar (Number 1.0)), EValue (Scalar (Number 2.0)), EValue (Scalar (Number 3.0))])
+    -- it "parses a monadic operator" $ do parse' Parser.operatorParser "-" `shouldBe` BuiltInMonadic "-" "negate" id

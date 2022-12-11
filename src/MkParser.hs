@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module MkParser (module MkParser) where
 
 import qualified BuiltInFunctions as Bif
@@ -6,9 +8,12 @@ import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Control.Monad.Identity
 import Control.Monad.State
 import Data.Either
-import Data.Map
-import qualified Data.Map as Map
+import Data.Foldable (find)
+import Data.Map hiding (filter)
+import qualified Data.Map as Map hiding (filter)
+import Data.Maybe (listToMaybe)
 import Data.Void
+import GHC.Generics (Associativity (RightAssociative), FixityI (PrefixI))
 import Language
   ( DyadicFunctionExpression (..),
     DyadicOperator (..),
@@ -182,30 +187,33 @@ expressionParser =
   makeExprParser
     termParser
     [ [ -- dyadic functions
-        InfixR (EDyadic <$> dyadicFunctionParser),
-        -- monadic functions
+        InfixR (EDyadic <$> dyadicFunctionParser)
+      ],
+      [ -- monadic functions
         Prefix (EMonadic <$> monadicFunctionParser)
-        -- monadic operators
-        -- Prefix (EMonadic . MOpr <$> operator)
       ]
+      -- monadic operators
+      -- Prefix (EMonadic . MOpr <$> operator)
     ]
 
 monadicFunctionParser :: Parser MonadicFunctionExpression
 monadicFunctionParser =
-  makeExprParser
-    builtInMonadicFunctionParser
-    [ [ Postfix (MonadicOp <$> builtInMonadicOperatorParser)
+  lexeme $
+    makeExprParser
+      builtInMonadicFunctionParser
+      [ [ Postfix (MonadicOp <$> builtInMonadicOperatorParser)
+        ]
       ]
-    ]
 
 dyadicFunctionParser :: Parser DyadicFunctionExpression
 dyadicFunctionParser =
-  makeExprParser
-    builtInDyadicFunctionParser
-    [ [ Postfix (MonadicOp1 <$> builtInMonadicOperatorParser),
-        InfixL (DyadicOp <$> builtInDyadicOperatorParser)
+  lexeme $
+    makeExprParser
+      builtInDyadicFunctionParser
+      [ [ Postfix (MonadicOp1 <$> builtInMonadicOperatorParser),
+          InfixL (DyadicOp <$> builtInDyadicOperatorParser)
+        ]
       ]
-    ]
 
 ciel :: Float -> Float
 ciel = toEnum . ceiling
@@ -213,38 +221,20 @@ ciel = toEnum . ceiling
 builtInMonadicFunctionParser :: Parser MonadicFunctionExpression
 builtInMonadicFunctionParser = do
   c <- builtInFunctionChar
-  return $ uncurry (BuiltInMonadic [c]) $ case c of
-    '+' -> ("plus", Bif.makeMonadicFunction (0 +))
-    '-' -> ("negate", Bif.makeMonadicFunction (0 -))
-    '×' -> ("", Bif.makeMonadicFunction (1 *))
-    '÷' -> ("reciprocal", Bif.makeMonadicFunction (1 /))
-    '⌈' -> ("ciel", Bif.makeMonadicFunction (toEnum . ceiling))
-    '⌊' -> ("floor", Bif.makeMonadicFunction (toEnum . floor))
-    '⍟' -> ("log", Bif.makeMonadicFunction log)
-    '*' -> ("exp", Bif.makeMonadicFunction exp)
-    '○' -> ("pitimes", Bif.makeMonadicFunction (* pi))
-    '!' -> ("factorial", Bif.makeMonadicFunction gamma)
-    '?' -> ("random", Bif.makeMonadicFunction (1.0 -))
-    '⍴' -> ("shapeOf", Bif.shapeOf)
-    _ -> error "builtInFunctionParser: impossible"
+  -- find the function in builtInMonadicFunctions with the same symbol
+  let maybeFunc = find (\case (BuiltInMonadic sym _ _) -> sym == [c]; _ -> False) Bif.builtInMonadicFunctions
+  case maybeFunc of
+    Just builtInFunc -> return builtInFunc
+    Nothing -> error "builtInFunctionParser: not found"
 
 builtInDyadicFunctionParser :: Parser DyadicFunctionExpression
 builtInDyadicFunctionParser = lexeme $ do
   c <- builtInFunctionChar
-  return $ uncurry (BuiltInDyadic [c]) $ case c of
-    '+' -> ("add", Bif.makeDyadicFunction (+))
-    '-' -> ("minus", Bif.makeDyadicFunction (-))
-    '×' -> ("mult", Bif.makeDyadicFunction (*))
-    '÷' -> ("div", Bif.makeDyadicFunction (/))
-    '⌈' -> ("max", Bif.makeDyadicFunction max)
-    '⌊' -> ("min", Bif.makeDyadicFunction min)
-    '⍴' -> ("reshape", Bif.reshape)
-    -- '⍟' -> makeDyadicFunction log
-    -- '*' -> makeDyadicFunction exp
-    -- '○' -> makeDyadicFunction (* p)
-    -- '!' -> Bif.makeDyadicFunction binomial
-    -- '?' -> makeDyadicFunction (random 0 1)
-    _ -> error "builtInFunctionParser: impossible"
+  -- find the function in builtInDyadicFunctions with the same symbol
+  let maybeFunc = find (\case (BuiltInDyadic sym _ _) -> sym == [c]; _ -> False) Bif.builtInDyadicFunctions
+  case maybeFunc of
+    Just builtInFunc -> return builtInFunc
+    Nothing -> error "builtInFunctionParser: not found"
 
 builtInMonadicOperatorParser :: Parser MonadicOperator
 builtInMonadicOperatorParser = lexeme $ do
