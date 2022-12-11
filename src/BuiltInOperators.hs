@@ -7,7 +7,7 @@ import Language
 
 -- Monadic operators
 
-reduce :: MonadicOperator
+reduce :: Function -> Function
 reduce (MonadicF _) = error "reduce: requires a dyadic function"
 reduce (DyadicF f) = MonadicF $ \case
   Scalar s -> Scalar s
@@ -15,7 +15,7 @@ reduce (DyadicF f) = MonadicF $ \case
     let n = last shape
     Array (init shape) (map (foldl1 f) $ chunksOf n xs)
 
-scan :: MonadicOperator
+scan :: Function -> Function
 scan (MonadicF _) = error "scan: requires a dyadic function"
 scan (DyadicF f) = MonadicF $ \case
   Scalar s -> Scalar s
@@ -25,7 +25,7 @@ scan (DyadicF f) = MonadicF $ \case
 
 -- Dyadic operators
 
-product :: DyadicOperator
+product :: Function -> Function -> Function
 product (DyadicF d1) (DyadicF d2) = DyadicF $ \x y ->
   case (x, y) of
     (Scalar s1, Scalar s2) -> d2 (Scalar s1) (Scalar s2)
@@ -35,7 +35,7 @@ product (DyadicF d1) (DyadicF d2) = DyadicF $ \x y ->
       Array (init shape) (map (foldl1 d1) $ chunksOf n firstOp)
     (Array shape xs, Scalar s2) -> do
       let n = last shape
-      let firstOp = map (flip d2 (Scalar s2)) xs
+      let firstOp = map (`d2` Scalar s2) xs
       Array (init shape) (map (foldl1 d1) $ chunksOf n firstOp)
     (Array shape1 xs, Array shape2 ys) | shape1 == shape2 -> Array shape1 (zipWith d2 xs ys)
     (Array shape1 _, Array shape2 _) -> error ("Shapes do not match: " ++ show shape1 ++ " and " ++ show shape2)

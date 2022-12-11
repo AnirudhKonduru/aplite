@@ -5,27 +5,36 @@ import qualified BuiltInOperators as Bio
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Control.Monad.Identity
 import Control.Monad.State
+import Data.Either
 import Data.Map
 import qualified Data.Map as Map
 import Data.Void
 import Language
-  ( Dyadic (DSym),
-    DyadicFunctionExpression (..),
-    DyadicOperator,
+  ( DyadicFunctionExpression (..),
+    DyadicOperator (..),
     Expression (..),
-    Function (..),
-    Monadic (MSym),
     MonadicFunctionExpression (..),
-    MonadicOperator,
+    MonadicOperator (..),
     Scalar (..),
     Value (..),
     aplDyadicOperators,
     aplFunctions,
     aplMonadicOperators,
   )
-import Math.Factorial (Factorial (factorial))
 import Math.Gamma (Gamma (gamma))
 import Text.Megaparsec
+  ( MonadParsec (eof, try),
+    ParseErrorBundle,
+    ParsecT,
+    between,
+    many,
+    oneOf,
+    option,
+    parseTest,
+    runParser,
+    some,
+    (<|>),
+  )
 import Text.Megaparsec.Char (numberChar)
 import qualified Text.Megaparsec.Char as C
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -41,8 +50,13 @@ type Parser a = StateT Env (ParsecT Void String Identity) a
 parseTest' :: (Show a) => StateT Env (ParsecT Void String Identity) a -> String -> IO ()
 parseTest' p = Text.Megaparsec.parseTest $ evalStateT p Map.empty
 
-parse :: StateT Env (ParsecT Void String Identity) a -> String -> Either (ParseErrorBundle String Void) a
+parse :: Parser a -> String -> Either (ParseErrorBundle String Void) a
 parse p = runParser (evalStateT p Map.empty) ""
+
+parse' :: Parser a -> String -> a
+parse' p exp = case runParser (evalStateT p Map.empty) "" exp of
+  Left err -> error (show err)
+  Right x -> x
 
 -- Parse a positive or negative integer
 number :: Parser Int
@@ -155,15 +169,18 @@ eValueParser =
 termParser :: Parser Expression
 termParser =
   lexeme $
-    try (EValue <$> valueParser)
-      <|> try (EArray <$> valuesParser')
+    -- \| trying to read values directly as an array/scalar
+    -- \| instead of as an expression (EArray) prevents it
+    -- \| from parsing mixed arrays as a single array
+    -- try (EValue <$> valueParser)
+    try (EArray <$> valuesParser')
       <|> try (EVariable <$> variableParser)
       <|> try (enclosed expressionParser)
 
-aplParser :: Parser Expression
-aplParser =
+expressionParser :: Parser Expression
+expressionParser =
   makeExprParser
-    (EValue <$> valueParser)
+    termParser
     [ [ -- dyadic functions
         InfixR (EDyadic <$> dyadicFunctionParser),
         -- monadic functions
@@ -172,16 +189,6 @@ aplParser =
         -- Prefix (EMonadic . MOpr <$> operator)
       ]
     ]
-
--- aplFunctionParser :: Parser FunctionExpression
--- aplFunctionParser = makeExprParser monadicFunctionParser [[
---         -- dyadic functions
---         InfixR (DyadicF . DSym <$> operator),
---         -- monadic functions
---         Prefix (MonadicF . MSym <$> operator)
---         -- monadic operators
---         -- Prefix (EMonadic . MOpr <$> operator)
---         ]]
 
 monadicFunctionParser :: Parser MonadicFunctionExpression
 monadicFunctionParser =
@@ -218,18 +225,20 @@ builtInMonadicFunctionParser = do
     '○' -> ("pitimes", Bif.makeMonadicFunction (* pi))
     '!' -> ("factorial", Bif.makeMonadicFunction gamma)
     '?' -> ("random", Bif.makeMonadicFunction (1.0 -))
+    '⍴' -> ("shapeOf", Bif.shapeOf)
     _ -> error "builtInFunctionParser: impossible"
 
 builtInDyadicFunctionParser :: Parser DyadicFunctionExpression
 builtInDyadicFunctionParser = lexeme $ do
   c <- builtInFunctionChar
-  return $ BuiltInDyadic $ case c of
-    '+' -> Bif.makeDyadicFunction (+)
-    '-' -> Bif.makeDyadicFunction (-)
-    '×' -> Bif.makeDyadicFunction (*)
-    '÷' -> Bif.makeDyadicFunction (/)
-    '⌈' -> Bif.makeDyadicFunction max
-    '⌊' -> Bif.makeDyadicFunction min
+  return $ uncurry (BuiltInDyadic [c]) $ case c of
+    '+' -> ("add", Bif.makeDyadicFunction (+))
+    '-' -> ("minus", Bif.makeDyadicFunction (-))
+    '×' -> ("mult", Bif.makeDyadicFunction (*))
+    '÷' -> ("div", Bif.makeDyadicFunction (/))
+    '⌈' -> ("max", Bif.makeDyadicFunction max)
+    '⌊' -> ("min", Bif.makeDyadicFunction min)
+    '⍴' -> ("reshape", Bif.reshape)
     -- '⍟' -> makeDyadicFunction log
     -- '*' -> makeDyadicFunction exp
     -- '○' -> makeDyadicFunction (* p)
@@ -240,43 +249,24 @@ builtInDyadicFunctionParser = lexeme $ do
 builtInMonadicOperatorParser :: Parser MonadicOperator
 builtInMonadicOperatorParser = lexeme $ do
   c <- builtInMonadicOperatorChar
-  return $ case c of
-    '/' -> Bio.reduce
-    '\\' -> Bio.scan
+  return $ uncurry (MonadicOperator [c]) $ case c of
+    '/' -> ("reduce", Bio.reduce)
+    '\\' -> ("scan", Bio.scan)
     _ -> error "builtInOperatorParser: impossible"
 
 builtInDyadicOperatorParser :: Parser DyadicOperator
 builtInDyadicOperatorParser = lexeme $ do
   c <- builtInDyadicOperatorChar
-  return $ case c of
-    '.' -> Bio.product
-    '\\' -> Bio.product
+  return $ uncurry (DyadicOperator [c]) $ case c of
+    '.' -> ("dot", Bio.product)
+    '\\' -> ("nm", Bio.product)
     _ -> error "builtInOperatorParser: impossible"
 
 -- parse a list of space separated values
 valuesParser' :: Parser [Expression]
-valuesParser' = try $ (:) <$> singleValueParser <*> some singleValueParser
+valuesParser' = try $ some singleValueParser
   where
     singleValueParser = try (EArray <$> enclosed valuesParser') <|> try (EValue . Scalar <$> scalarParser) <|> try (enclosed expressionParser)
 
--- dyadicExpParser :: Parser (Expression -> Expression -> Expression)
--- dyadicExpParser = do
---   op <- DSym <$> operator
---   return $ flip EDyadic op
-
-expressionParser :: Parser Expression
-expressionParser =
-  lexeme $ undefined
-
--- try monadicParser
--- <|> try dyadicParser
--- <|> try (enclosed expressionParser)
--- <|> try (EArray <$> valuesParser')
--- <|> try (EValue . Scalar <$> scalarParser)
-
 complete :: Parser a -> Parser a
 complete p = lexeme $ p <* eof
-
--- >>> parseTest monadicExpression "1"
--- ProgressCancelledException
--- ProgressCancelledException

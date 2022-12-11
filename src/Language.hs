@@ -1,24 +1,52 @@
+{-# LANGUAGE InstanceSigs #-}
+
 module Language (module Language) where
 
-data Type = Value | MonadicFunction | DyadicFunction deriving (Show, Eq)
+import Data.List.Split (chunksOf)
+import Prettyprinter (Doc, Pretty (pretty))
+import qualified Prettyprinter as PP
+import qualified Prettyprinter.Render.String as PP
+
+-- data Type = Value | MonadicFunction | DyadicFunction deriving (Show, Eq)
+
+print :: Pretty a => a -> String
+print = PP.renderString . PP.layoutPretty PP.defaultLayoutOptions . PP.pretty
 
 data Function
   = MonadicF MonadicFunction
   | DyadicF DyadicFunction
 
--- define typeclass for monadic functions
-class MonadicF a where
-  func :: a -> MonadicFunction
-  name :: a -> String
-  symbol :: a -> String
+type MonadicFunction = (Value -> Value)
 
-type MonadicFunction = Value -> Value
+type DyadicFunction = (Value -> Value -> Value)
 
-type DyadicFunction = Value -> Value -> Value
+data MonadicOperator = MonadicOperator String String (Function -> Function)
 
-type MonadicOperator = Function -> Function
+data DyadicOperator = DyadicOperator String String (Function -> Function -> Function)
 
-type DyadicOperator = Function -> Function -> Function
+instance (Show MonadicOperator) where
+  show :: MonadicOperator -> String
+  show (MonadicOperator _ name _) = name
+
+instance (Pretty MonadicOperator) where
+  pretty :: MonadicOperator -> Doc ann
+  pretty (MonadicOperator symbol _ _) = pretty symbol
+
+instance Eq MonadicOperator where
+  (==) :: MonadicOperator -> MonadicOperator -> Bool
+  (MonadicOperator _ name1 _) == (MonadicOperator _ name2 _) = name1 == name2
+
+instance (Show DyadicOperator) where
+  show :: DyadicOperator -> String
+  show (DyadicOperator _ name _) = name
+
+instance (Pretty DyadicOperator) where
+  pretty :: DyadicOperator -> Doc ann
+  pretty (DyadicOperator symbol _ _) = pretty symbol
+
+instance Eq DyadicOperator where
+  (==) :: DyadicOperator -> DyadicOperator -> Bool
+  (DyadicOperator _ name1 _) == (DyadicOperator _ name2 _) = name1 == name2
 
 data Scalar
   = -- A scalar is either a single value (Int for now, we'll add more later)
@@ -32,6 +60,26 @@ data Value
     -- The second [a] is the values of the array
     Array [Int] [Value]
   deriving (Show, Eq)
+
+nLines :: Int -> Doc ann
+nLines n = PP.vcat (replicate n PP.line)
+
+instance Pretty Value where
+  pretty :: Value -> Doc ann
+  pretty (Scalar (Number x)) = pretty x
+  pretty (Scalar (Char x)) = pretty x
+  -- print array, APL style
+  pretty (Array [_] xs) = PP.align $ PP.hcat (PP.punctuate PP.space (map pretty xs))
+  -- print the inner array, separated by newlines
+  pretty arr@(Array shape _) = PP.align $ PP.vsep (PP.punctuate (nLines ((-) (length shape) 2)) (map pretty (unwound1dim arr)))
+
+-- pp (Array s xs) = undefined
+
+unwound1dim :: Value -> [Value]
+unwound1dim (Scalar x) = [Scalar x]
+unwound1dim (Array [] x) = x
+unwound1dim (Array [_] xs) = xs
+unwound1dim (Array (_ : as) xs) = map (Array as) (chunksOf (product as) xs)
 
 -- APL operators, a non-exhaustive list
 aplFunctions :: String
@@ -50,31 +98,56 @@ newtype Monadic = MSym Char
 newtype Dyadic = DSym Char
   deriving (Show, Eq)
 
-data TypedExpression = TypedExpression Type Expression
+-- data TypedExpression = TypedExpression Type Expression
 
-ofType :: Type -> Expression -> TypedExpression
-t `ofType` e = TypedExpression t e
+-- ofType :: Type -> Expression -> TypedExpression
+-- t `ofType` e = TypedExpression t e
 
 data MonadicFunctionExpression
   = BuiltInMonadic String String MonadicFunction
   | MonadicOp MonadicOperator MonadicFunctionExpression
 
--- instance Show MonadicFunctionExpression where
---   show (BuiltInMonadic _ name _) = name
---   show (MonadicOp mop mf) = "(" ++ show mf ++ ")" ++ show mop
+instance Show MonadicFunctionExpression where
+  show :: MonadicFunctionExpression -> String
+  show (BuiltInMonadic _ name _) = name
+  show (MonadicOp mop mf) = show mop ++ "(" ++ show mf ++ ")"
+
+instance Pretty MonadicFunctionExpression where
+  pretty :: MonadicFunctionExpression -> Doc ann
+  pretty (BuiltInMonadic symbol _ _) = pretty symbol
+  pretty (MonadicOp mop mf) = pretty mf PP.<> pretty mop
+
+instance Eq MonadicFunctionExpression where
+  (==) :: MonadicFunctionExpression -> MonadicFunctionExpression -> Bool
+  (BuiltInMonadic _ name1 _) == (BuiltInMonadic _ name2 _) = name1 == name2
+  (MonadicOp mop1 mf1) == (MonadicOp mop2 mf2) = mop1 == mop2 && mf1 == mf2
+  _ == _ = False
 
 -- applyMonadicFunction :: MonadicFunctionExpression ->
 
 data DyadicFunctionExpression
-  = BuiltInDyadic DyadicFunction
+  = BuiltInDyadic String String DyadicFunction
   | MonadicOp1 MonadicOperator DyadicFunctionExpression
   | DyadicOp DyadicOperator DyadicFunctionExpression DyadicFunctionExpression
 
--- data FunctionExpression =
---   BuiltIn Function
---   | MonadicOp1 MonadicOperator FunctionExpression
---   | MonadicOp2 MonadicOperator FunctionExpression FunctionExpression
---   | DyadicOp DyadicOperator FunctionExpression FunctionExpression
+instance Show DyadicFunctionExpression where
+  show :: DyadicFunctionExpression -> String
+  show (BuiltInDyadic _ name _) = name
+  show (MonadicOp1 mop df) = show mop ++ "(" ++ show df ++ ")"
+  show (DyadicOp dop df1 df2) = show dop ++ "(" ++ show df1 ++ ")" ++ " " ++ "(" ++ show df2 ++ ")"
+
+instance Pretty DyadicFunctionExpression where
+  pretty :: DyadicFunctionExpression -> Doc ann
+  pretty (BuiltInDyadic symbol _ _) = pretty symbol
+  pretty (MonadicOp1 mop df) = PP.parens (pretty df) PP.<> pretty mop
+  pretty (DyadicOp dop df1 df2) = pretty df1 PP.<> pretty dop PP.<> PP.parens (pretty df2)
+
+instance Eq DyadicFunctionExpression where
+  (==) :: DyadicFunctionExpression -> DyadicFunctionExpression -> Bool
+  (BuiltInDyadic _ name1 _) == (BuiltInDyadic _ name2 _) = name1 == name2
+  (MonadicOp1 mop1 df1) == (MonadicOp1 mop2 df2) = mop1 == mop2 && df1 == df2
+  (DyadicOp dop1 df11 df12) == (DyadicOp dop2 df21 df22) = dop1 == dop2 && df11 == df21 && df12 == df22
+  _ == _ = False
 
 data Expression
   = EVariable String
@@ -83,6 +156,16 @@ data Expression
   | EDyadic DyadicFunctionExpression Expression Expression
   | EBind String Expression
   | EArray [Expression]
+  deriving (Show, Eq)
+
+instance Pretty Expression where
+  pretty :: Expression -> Doc ann
+  pretty (EVariable name) = pretty name
+  pretty (EValue v) = pretty v
+  pretty (EMonadic mf e) = pretty mf PP.<> pretty e
+  pretty (EDyadic df e1 e2) = PP.parens (pretty e1) PP.<> pretty df PP.<> pretty e2
+  pretty (EBind name e) = pretty name PP.<> pretty "←" PP.<> pretty e
+  pretty (EArray es) = PP.brackets $ PP.hcat $ PP.punctuate PP.comma $ map pretty es
 
 -- deriving (Show, Eq)
 
