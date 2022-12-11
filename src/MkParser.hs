@@ -196,22 +196,23 @@ expressionParser =
       -- Prefix (EMonadic . MOpr <$> operator)
     ]
 
+monadicFunctionTermParser :: Parser MonadicFunctionExpression
+monadicFunctionTermParser = try builtInMonadicFunctionParser
+  <|> try (enclosed monadicFunctionParser)
+  <|> try (flip MOpDf <$> dyadicFunctionParser <*> builtInMonadicOperatorParser)
+
 monadicFunctionParser :: Parser MonadicFunctionExpression
-monadicFunctionParser =
-  lexeme $
-    makeExprParser
-      builtInMonadicFunctionParser
-      [ [ Postfix (MonadicOp <$> builtInMonadicOperatorParser)
-        ]
-      ]
+monadicFunctionParser = try (flip MOpDf <$> dyadicFunctionParser <*> builtInMonadicOperatorParser)
+  <|> try (enclosed monadicFunctionParser)
+  <|> try builtInMonadicFunctionParser
 
 dyadicFunctionParser :: Parser DyadicFunctionExpression
-dyadicFunctionParser =
+dyadicFunctionParser = 
   lexeme $
     makeExprParser
       builtInDyadicFunctionParser
-      [ [ Postfix (MonadicOp1 <$> builtInMonadicOperatorParser),
-          InfixL (DyadicOp <$> builtInDyadicOperatorParser)
+      [ [ -- Postfix (DOp <$> builtInMonadicOperatorParser),
+          InfixL (DOpDfDf <$> builtInDyadicOperatorParser)
         ]
       ]
 

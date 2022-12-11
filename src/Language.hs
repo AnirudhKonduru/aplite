@@ -105,48 +105,54 @@ newtype Dyadic = DSym Char
 
 data MonadicFunctionExpression
   = BuiltInMonadic String String MonadicFunction
-  | MonadicOp MonadicOperator MonadicFunctionExpression
+  | MOpMf MonadicOperator MonadicFunctionExpression
+  | MOpDf MonadicOperator DyadicFunctionExpression
 
 instance Show MonadicFunctionExpression where
   show :: MonadicFunctionExpression -> String
   show (BuiltInMonadic _ name _) = name
-  show (MonadicOp mop mf) = show mop ++ "(" ++ show mf ++ ")"
+  show (MOpMf mop mf) = show mop ++ "(" ++ show mf ++ ")"
+  show (MOpDf mop df) = show mop ++ "(" ++ show df ++ ")"
 
 instance Pretty MonadicFunctionExpression where
   pretty :: MonadicFunctionExpression -> Doc ann
   pretty (BuiltInMonadic symbol _ _) = pretty symbol
-  pretty (MonadicOp mop mf) = pretty mf PP.<> pretty mop
+  pretty (MOpMf mop mf) = pretty mf PP.<> pretty mop
+  pretty (MOpDf mop df) = pretty df PP.<> pretty mop
 
 instance Eq MonadicFunctionExpression where
   (==) :: MonadicFunctionExpression -> MonadicFunctionExpression -> Bool
   (BuiltInMonadic _ name1 _) == (BuiltInMonadic _ name2 _) = name1 == name2
-  (MonadicOp mop1 mf1) == (MonadicOp mop2 mf2) = mop1 == mop2 && mf1 == mf2
+  (MOpMf mop1 mf1) == (MOpMf mop2 mf2) = mop1 == mop2 && mf1 == mf2
+  (MOpDf mop1 df1) == (MOpDf mop2 df2) = mop1 == mop2 && df1 == df2
   _ == _ = False
 
 -- applyMonadicFunction :: MonadicFunctionExpression ->
 
 data DyadicFunctionExpression
   = BuiltInDyadic String String DyadicFunction
-  | MonadicOp1 MonadicOperator DyadicFunctionExpression
-  | DyadicOp DyadicOperator DyadicFunctionExpression DyadicFunctionExpression
+  | DOpDfDf DyadicOperator DyadicFunctionExpression DyadicFunctionExpression
+  | DOpDfMf DyadicOperator DyadicFunctionExpression MonadicFunctionExpression
+  -- | MonadicOp1 MonadicOperator DyadicFunctionExpression
+  -- | DyadicOp DyadicOperator DyadicFunctionExpression DyadicFunctionExpression
 
 instance Show DyadicFunctionExpression where
   show :: DyadicFunctionExpression -> String
   show (BuiltInDyadic _ name _) = name
-  show (MonadicOp1 mop df) = show mop ++ "(" ++ show df ++ ")"
-  show (DyadicOp dop df1 df2) = show dop ++ "(" ++ show df1 ++ ")" ++ " " ++ "(" ++ show df2 ++ ")"
+  show (DOpDfDf dop df1 df2) = show df1 ++ show dop ++ show df2
+  show (DOpDfMf dop df mf) = show df ++ show dop ++ show mf
 
 instance Pretty DyadicFunctionExpression where
   pretty :: DyadicFunctionExpression -> Doc ann
   pretty (BuiltInDyadic symbol _ _) = pretty symbol
-  pretty (MonadicOp1 mop df) = PP.parens (pretty df) PP.<> pretty mop
-  pretty (DyadicOp dop df1 df2) = pretty df1 PP.<> pretty dop PP.<> PP.parens (pretty df2)
+  pretty (DOpDfDf dop df1 df2) = pretty df1 PP.<> pretty dop PP.<> pretty df2
+  pretty (DOpDfMf dop df mf) = pretty df PP.<> pretty dop PP.<> pretty mf
 
 instance Eq DyadicFunctionExpression where
   (==) :: DyadicFunctionExpression -> DyadicFunctionExpression -> Bool
   (BuiltInDyadic _ name1 _) == (BuiltInDyadic _ name2 _) = name1 == name2
-  (MonadicOp1 mop1 df1) == (MonadicOp1 mop2 df2) = mop1 == mop2 && df1 == df2
-  (DyadicOp dop1 df11 df12) == (DyadicOp dop2 df21 df22) = dop1 == dop2 && df11 == df21 && df12 == df22
+  (DOpDfDf dop1 df11 df12) == (DOpDfDf dop2 df21 df22) = dop1 == dop2 && df11 == df21 && df12 == df22
+  (DOpDfMf dop1 df1 mf1) == (DOpDfMf dop2 df2 mf2) = dop1 == dop2 && df1 == df2 && mf1 == mf2
   _ == _ = False
 
 data Expression

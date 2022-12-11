@@ -3,6 +3,7 @@ import MkParser (parse')
 import qualified MkParser as Parser
 import Test.Hspec
 import qualified BuiltInFunctions as Bif
+import BuiltInOperators (reduce)
 
 main :: IO ()
 main = hspec $ do
@@ -42,5 +43,5 @@ main = hspec $ do
     it "parses function prescedence corrctly" $ do parse' Parser.expressionParser "⍴ 2 3 ⍴ 3 4 5" `shouldBe` EMonadic Bif.shape (EDyadic Bif.reshape (EArray [EValue (Scalar (Number 2.0)),EValue (Scalar (Number 3.0))]) (EArray [EValue (Scalar (Number 3.0)),EValue (Scalar (Number 4.0)),EValue (Scalar (Number 5.0))]))
 
   describe "parse function expressions" $ do
-    it "parses a monadic operator with dyadic function" $ do parse' Parser.expressionParser "+/ 1 2 3" `shouldBe` EMonadic (BuiltInMonadic "+/" "reducePlus" id) (EArray [EValue (Scalar (Number 1.0)), EValue (Scalar (Number 2.0)), EValue (Scalar (Number 3.0))])
+    it "parses a monadic operator with dyadic function" $ do parse' Parser.expressionParser "+/ 1 2 3" `shouldBe` EMonadic (MOpDf (MonadicOperator "/" "reduce" reduce) Bif.plus) (EArray [EValue (Scalar (Number 1.0)), EValue (Scalar (Number 2.0)), EValue (Scalar (Number 3.0))])
     -- it "parses a monadic operator" $ do parse' Parser.operatorParser "-" `shouldBe` BuiltInMonadic "-" "negate" id
