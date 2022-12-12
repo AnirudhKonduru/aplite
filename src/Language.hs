@@ -15,6 +15,17 @@ print = PP.renderString . PP.layoutPretty PP.defaultLayoutOptions . PP.pretty
 data Function
   = MonadicF MonadicFunction
   | DyadicF DyadicFunction
+  | AmbiguousF MonadicFunction DyadicFunction
+
+applyMonadic :: Function -> Value -> Value
+applyMonadic (MonadicF f) v = f v
+applyMonadic (DyadicF _) _ = error "rank error"
+applyMonadic (AmbiguousF f _) v = f v
+
+applyDyadic :: Function -> Value -> Value -> Value
+applyDyadic (MonadicF _) _ _ = error "rank error"
+applyDyadic (DyadicF f) v1 v2 = f v1 v2
+applyDyadic (AmbiguousF _ f) v1 v2 = f v1 v2
 
 type MonadicFunction = (Value -> Value)
 
@@ -103,63 +114,35 @@ newtype Dyadic = DSym Char
 -- ofType :: Type -> Expression -> TypedExpression
 -- t `ofType` e = TypedExpression t e
 
-data MonadicFunctionExpression
-  = BuiltInMonadic String String MonadicFunction
-  | MOpMf MonadicOperator MonadicFunctionExpression
-  | MOpDf MonadicOperator DyadicFunctionExpression
+data FunctionExpression
+  = BuiltInFunction String Function
+  | MOpF MonadicOperator FunctionExpression
+  | DOpF DyadicOperator FunctionExpression FunctionExpression
 
-instance Show MonadicFunctionExpression where
-  show :: MonadicFunctionExpression -> String
-  show (BuiltInMonadic _ name _) = name
-  show (MOpMf mop mf) = show mop ++ "(" ++ show mf ++ ")"
-  show (MOpDf mop df) = show mop ++ "(" ++ show df ++ ")"
+instance Show FunctionExpression where
+  show :: FunctionExpression -> String
+  show (BuiltInFunction symbol _) = symbol
+  show (MOpF mop mf) = "(" ++ show mop ++ show mf ++ ")"
+  show (DOpF dop f1 f2) = "(" ++ show f1 ++ show dop ++ show f2 ++ ")"
 
-instance Pretty MonadicFunctionExpression where
-  pretty :: MonadicFunctionExpression -> Doc ann
-  pretty (BuiltInMonadic symbol _ _) = pretty symbol
-  pretty (MOpMf mop mf) = pretty mf PP.<> pretty mop
-  pretty (MOpDf mop df) = pretty df PP.<> pretty mop
+instance Pretty FunctionExpression where
+  pretty :: FunctionExpression -> Doc ann
+  pretty (BuiltInFunction symbol _) = pretty symbol
+  pretty (MOpF mop mf) = pretty mf PP.<> pretty mop
+  pretty (DOpF dop f1 f2) = pretty f1 PP.<> pretty dop PP.<> pretty f2
 
-instance Eq MonadicFunctionExpression where
-  (==) :: MonadicFunctionExpression -> MonadicFunctionExpression -> Bool
-  (BuiltInMonadic _ name1 _) == (BuiltInMonadic _ name2 _) = name1 == name2
-  (MOpMf mop1 mf1) == (MOpMf mop2 mf2) = mop1 == mop2 && mf1 == mf2
-  (MOpDf mop1 df1) == (MOpDf mop2 df2) = mop1 == mop2 && df1 == df2
-  _ == _ = False
-
--- applyMonadicFunction :: MonadicFunctionExpression ->
-
-data DyadicFunctionExpression
-  = BuiltInDyadic String String DyadicFunction
-  | DOpDfDf DyadicOperator DyadicFunctionExpression DyadicFunctionExpression
-  | DOpDfMf DyadicOperator DyadicFunctionExpression MonadicFunctionExpression
-  -- | MonadicOp1 MonadicOperator DyadicFunctionExpression
-  -- | DyadicOp DyadicOperator DyadicFunctionExpression DyadicFunctionExpression
-
-instance Show DyadicFunctionExpression where
-  show :: DyadicFunctionExpression -> String
-  show (BuiltInDyadic _ name _) = name
-  show (DOpDfDf dop df1 df2) = show df1 ++ show dop ++ show df2
-  show (DOpDfMf dop df mf) = show df ++ show dop ++ show mf
-
-instance Pretty DyadicFunctionExpression where
-  pretty :: DyadicFunctionExpression -> Doc ann
-  pretty (BuiltInDyadic symbol _ _) = pretty symbol
-  pretty (DOpDfDf dop df1 df2) = pretty df1 PP.<> pretty dop PP.<> pretty df2
-  pretty (DOpDfMf dop df mf) = pretty df PP.<> pretty dop PP.<> pretty mf
-
-instance Eq DyadicFunctionExpression where
-  (==) :: DyadicFunctionExpression -> DyadicFunctionExpression -> Bool
-  (BuiltInDyadic _ name1 _) == (BuiltInDyadic _ name2 _) = name1 == name2
-  (DOpDfDf dop1 df11 df12) == (DOpDfDf dop2 df21 df22) = dop1 == dop2 && df11 == df21 && df12 == df22
-  (DOpDfMf dop1 df1 mf1) == (DOpDfMf dop2 df2 mf2) = dop1 == dop2 && df1 == df2 && mf1 == mf2
+instance Eq FunctionExpression where
+  (==) :: FunctionExpression -> FunctionExpression -> Bool
+  (BuiltInFunction name1 _) == (BuiltInFunction name2 _) = name1 == name2
+  (MOpF mop1 f1) == (MOpF mop2 f2) = mop1 == mop2 && f1 == f2
+  (DOpF dop1 f11 f12) == (DOpF dop2 f21 f22) = dop1 == dop2 && f11 == f21 && f12 == f22
   _ == _ = False
 
 data Expression
   = EVariable String
   | EValue Value
-  | EMonadic MonadicFunctionExpression Expression
-  | EDyadic DyadicFunctionExpression Expression Expression
+  | EMonadic FunctionExpression Expression
+  | EDyadic FunctionExpression Expression Expression
   | EBind String Expression
   | EArray [Expression]
   deriving (Show, Eq)

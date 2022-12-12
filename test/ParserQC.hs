@@ -1,4 +1,4 @@
-module ParserTest (module ParserTest) where
+module ParserQC (module ParserQC) where
 
 import qualified Parser as P
 import Language
@@ -7,7 +7,6 @@ import Language
     Monadic (MSym),
     Scalar (..),
     Value (..),
-    aplOperators,
   )
 import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
 import qualified Test.QuickCheck as QC

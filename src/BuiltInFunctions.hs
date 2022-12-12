@@ -2,7 +2,7 @@ module BuiltInFunctions (module BuiltInFunctions) where
 
 import Language
 import Math.Gamma (gamma)
-import Prelude hiding (min, max, floor, negate)
+import Prelude hiding (floor, max, min, negate)
 import qualified Prelude
 
 makeMonadicFunction :: (Float -> Float) -> (Value -> Value)
@@ -60,54 +60,76 @@ reshape' (Array (_ : _) _) _ = error "domain error"
 reshape' (Scalar (Char _)) _ = error "domain error"
 
 -- | all the built in monadic functions
+builtInFunctions :: [FunctionExpression]
+builtInFunctions =
+  [ BuiltInFunction "+" (AmbiguousF conjugate plus),
+    BuiltInFunction "-" (AmbiguousF negate minus),
+    BuiltInFunction "×" (AmbiguousF direction times),
+    BuiltInFunction "÷" (AmbiguousF reciprocal divide),
+    BuiltInFunction "⌈" (AmbiguousF ciel max),
+    BuiltInFunction "⌊" (AmbiguousF floor min),
+    BuiltInFunction "⍴" (AmbiguousF shape reshape),
+    BuiltInFunction "⍟" (MonadicF natlog),
+    BuiltInFunction "*" (MonadicF exponential),
+    BuiltInFunction "○" (MonadicF pitimes),
+    BuiltInFunction "!" (MonadicF factorial),
+    BuiltInFunction "?" (MonadicF roll)
+  ]
 
-conjugate :: MonadicFunctionExpression
-conjugate = BuiltInMonadic "+" "conjugate" (makeMonadicFunction (0+))
-negate :: MonadicFunctionExpression
-negate = BuiltInMonadic "-" "negate" (makeMonadicFunction (0-))
-direction :: MonadicFunctionExpression
-direction = BuiltInMonadic "×" "direction" (makeMonadicFunction signum)
-reciprocal :: MonadicFunctionExpression
-reciprocal = BuiltInMonadic "÷" "reciprocal" (makeMonadicFunction (1/))
-ciel :: MonadicFunctionExpression
-ciel = BuiltInMonadic "⌈" "ciel" (makeMonadicFunction (toEnum . ceiling))
-floor :: MonadicFunctionExpression
-floor = BuiltInMonadic "⌊" "floor" (makeMonadicFunction (toEnum . Prelude.floor))
-natlog :: MonadicFunctionExpression
-natlog = BuiltInMonadic "⍟" "natlog" (makeMonadicFunction log)
-exponential :: MonadicFunctionExpression
-exponential = BuiltInMonadic "*" "exponential" (makeMonadicFunction exp)
-pitimes :: MonadicFunctionExpression
-pitimes = BuiltInMonadic "○" "pitimes" (makeMonadicFunction (* pi))
-factorial :: MonadicFunctionExpression
-factorial = BuiltInMonadic "!" "factorial" (makeMonadicFunction gamma)
-roll :: MonadicFunctionExpression
-roll = BuiltInMonadic "?" "roll" (makeMonadicFunction (1.0 -))
-shape :: MonadicFunctionExpression
-shape = BuiltInMonadic "⍴" "shape" shapeOf
+conjugate :: (Value -> Value)
+conjugate = makeMonadicFunction (0 +)
 
--- | all the built in monadic functions, in a list
+negate :: Value -> Value
+negate = makeMonadicFunction (0 -)
 
-builtInMonadicFunctions :: [MonadicFunctionExpression]
-builtInMonadicFunctions = [conjugate, negate, direction, reciprocal, ciel, floor, natlog, exponential, pitimes, factorial, roll, shape]
+direction :: Value -> Value
+direction = makeMonadicFunction signum
+
+reciprocal :: Value -> Value
+reciprocal = makeMonadicFunction (1 /)
+
+ciel :: Value -> Value
+ciel = makeMonadicFunction (toEnum . ceiling)
+
+floor :: Value -> Value
+floor = makeMonadicFunction (toEnum . Prelude.floor)
+
+natlog :: Value -> Value
+natlog = makeMonadicFunction log
+
+exponential :: Value -> Value
+exponential = makeMonadicFunction exp
+
+pitimes :: Value -> Value
+pitimes = makeMonadicFunction (* pi)
+
+factorial :: Value -> Value
+factorial = makeMonadicFunction gamma
+
+roll :: Value -> Value
+roll = makeMonadicFunction (1.0 -)
+
+shape :: Value -> Value
+shape = shapeOf
 
 -- | all the built in dyadic function definitions
+plus :: Value -> Value -> Value
+plus = makeDyadicFunction (+)
 
-plus :: DyadicFunctionExpression
-plus = BuiltInDyadic "+" "plus" (makeDyadicFunction (+))
-minus :: DyadicFunctionExpression
-minus = BuiltInDyadic "-" "minus" (makeDyadicFunction (-))
-times :: DyadicFunctionExpression
-times = BuiltInDyadic "×" "times" (makeDyadicFunction (*))
-divide :: DyadicFunctionExpression
-divide = BuiltInDyadic "÷" "divide" (makeDyadicFunction (/))
-max :: DyadicFunctionExpression
-max = BuiltInDyadic "⌈" "max" (makeDyadicFunction Prelude.max)
-min :: DyadicFunctionExpression
-min = BuiltInDyadic "⌊" "min" (makeDyadicFunction Prelude.min)
-reshape :: DyadicFunctionExpression
-reshape = BuiltInDyadic "⍴" "reshape" reshape'
+minus :: Value -> Value -> Value
+minus = makeDyadicFunction (-)
 
--- | List of all the builtin dyadic functions
-builtInDyadicFunctions :: [DyadicFunctionExpression]
-builtInDyadicFunctions = [plus, minus, times, divide, max, min, reshape]
+times :: Value -> Value -> Value
+times = makeDyadicFunction (*)
+
+divide :: Value -> Value -> Value
+divide = makeDyadicFunction (/)
+
+max :: Value -> Value -> Value
+max = makeDyadicFunction Prelude.max
+
+min :: Value -> Value -> Value
+min = makeDyadicFunction Prelude.min
+
+reshape :: Value -> Value -> Value
+reshape = reshape'

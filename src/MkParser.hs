@@ -15,10 +15,10 @@ import Data.Maybe (listToMaybe)
 import Data.Void
 import GHC.Generics (Associativity (RightAssociative), FixityI (PrefixI))
 import Language
-  ( DyadicFunctionExpression (..),
-    DyadicOperator (..),
+  ( DyadicOperator (..),
     Expression (..),
-    MonadicFunctionExpression (..),
+    Function (..),
+    FunctionExpression (BuiltInFunction, DOpF, MOpF),
     MonadicOperator (..),
     Scalar (..),
     Value (..),
@@ -182,57 +182,56 @@ termParser =
       <|> try (EVariable <$> variableParser)
       <|> try (enclosed expressionParser)
 
+functionExpressionParser :: Parser FunctionExpression
+functionExpressionParser =
+  makeExprParser
+    builtInFunctionParser
+    [ [InfixL (DOpF <$> builtInDyadicOperatorParser)],
+      [Postfix (MOpF <$> builtInMonadicOperatorParser)]
+    ]
+
 expressionParser :: Parser Expression
 expressionParser =
   makeExprParser
     termParser
     [ [ -- dyadic functions
-        InfixR (EDyadic <$> dyadicFunctionParser)
+        InfixR (EDyadic <$> functionExpressionParser)
       ],
       [ -- monadic functions
-        Prefix (EMonadic <$> monadicFunctionParser)
+        Prefix (EMonadic <$> functionExpressionParser)
       ]
       -- monadic operators
       -- Prefix (EMonadic . MOpr <$> operator)
     ]
 
-monadicFunctionTermParser :: Parser MonadicFunctionExpression
-monadicFunctionTermParser = try builtInMonadicFunctionParser
-  <|> try (enclosed monadicFunctionParser)
-  <|> try (flip MOpDf <$> dyadicFunctionParser <*> builtInMonadicOperatorParser)
+-- monadicFunctionTermParser :: Parser FunctionExpression
+-- monadicFunctionTermParser = try builtInFunctionParser
+--   <|> try (enclosed monadicFunctionParser)
+--   <|> try (flip MOp <$> dyadicFunctionParser <*> builtInMonadicOperatorParser)
 
-monadicFunctionParser :: Parser MonadicFunctionExpression
-monadicFunctionParser = try (flip MOpDf <$> dyadicFunctionParser <*> builtInMonadicOperatorParser)
-  <|> try (enclosed monadicFunctionParser)
-  <|> try builtInMonadicFunctionParser
+-- monadicFunctionParser :: Parser FunctionExpression
+-- monadicFunctionParser = try (flip MOpDf <$> dyadicFunctionParser <*> builtInMonadicOperatorParser)
+--   <|> try (enclosed monadicFunctionParser)
+--   <|> try builtInMonadicFunctionParser
 
-dyadicFunctionParser :: Parser DyadicFunctionExpression
-dyadicFunctionParser = 
-  lexeme $
-    makeExprParser
-      builtInDyadicFunctionParser
-      [ [ -- Postfix (DOp <$> builtInMonadicOperatorParser),
-          InfixL (DOpDfDf <$> builtInDyadicOperatorParser)
-        ]
-      ]
+-- dyadicFunctionParser :: Parser FunctionExpression
+-- dyadicFunctionParser =
+--   lexeme $
+--     makeExprParser
+--       builtInDyadicFunctionParser
+--       [ [ -- Postfix (DOp <$> builtInMonadicOperatorParser),
+--           InfixL (DOpDfDf <$> builtInDyadicOperatorParser)
+--         ]
+--       ]
 
 ciel :: Float -> Float
 ciel = toEnum . ceiling
 
-builtInMonadicFunctionParser :: Parser MonadicFunctionExpression
-builtInMonadicFunctionParser = do
+builtInFunctionParser :: Parser FunctionExpression
+builtInFunctionParser = do
   c <- builtInFunctionChar
   -- find the function in builtInMonadicFunctions with the same symbol
-  let maybeFunc = find (\case (BuiltInMonadic sym _ _) -> sym == [c]; _ -> False) Bif.builtInMonadicFunctions
-  case maybeFunc of
-    Just builtInFunc -> return builtInFunc
-    Nothing -> error "builtInFunctionParser: not found"
-
-builtInDyadicFunctionParser :: Parser DyadicFunctionExpression
-builtInDyadicFunctionParser = lexeme $ do
-  c <- builtInFunctionChar
-  -- find the function in builtInDyadicFunctions with the same symbol
-  let maybeFunc = find (\case (BuiltInDyadic sym _ _) -> sym == [c]; _ -> False) Bif.builtInDyadicFunctions
+  let maybeFunc = find (\case (BuiltInFunction sym _) -> sym == [c]; _ -> False) Bif.builtInFunctions
   case maybeFunc of
     Just builtInFunc -> return builtInFunc
     Nothing -> error "builtInFunctionParser: not found"
