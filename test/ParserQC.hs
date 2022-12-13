@@ -1,14 +1,6 @@
 module ParserQC (module ParserQC) where
 
 import qualified Parser as P
-import Language
-  ( Dyadic (DSym),
-    Expression (..),
-    Monadic (MSym),
-    Scalar (..),
-    Value (..),
-  )
-import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
 import qualified Test.QuickCheck as QC
 
 -- | quickcheck property for number parser

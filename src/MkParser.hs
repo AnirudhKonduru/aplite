@@ -7,17 +7,13 @@ import qualified BuiltInOperators as Bio
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Control.Monad.Identity
 import Control.Monad.State
-import Data.Either
 import Data.Foldable (find)
 import Data.Map hiding (filter)
 import qualified Data.Map as Map hiding (filter)
-import Data.Maybe (listToMaybe)
 import Data.Void
-import GHC.Generics (Associativity (RightAssociative), FixityI (PrefixI))
 import Language
   ( DyadicOperator (..),
     Expression (..),
-    Function (..),
     FunctionExpression (BuiltInFunction, DOpF, MOpF),
     MonadicOperator (..),
     Scalar (..),
@@ -26,7 +22,6 @@ import Language
     aplFunctions,
     aplMonadicOperators,
   )
-import Math.Gamma (Gamma (gamma))
 import Text.Megaparsec
   ( MonadParsec (eof, try),
     ParseErrorBundle,
@@ -59,7 +54,7 @@ parse :: Parser a -> String -> Either (ParseErrorBundle String Void) a
 parse p = runParser (evalStateT p Map.empty) ""
 
 parse' :: Parser a -> String -> a
-parse' p exp = case runParser (evalStateT p Map.empty) "" exp of
+parse' p e = case runParser (evalStateT p Map.empty) "" e of
   Left err -> error (show err)
   Right x -> x
 
