@@ -176,6 +176,7 @@ termParser =
     try (EArray <$> valuesParser')
       <|> try (EVariable <$> variableParser)
       <|> try (enclosed expressionParser)
+      <|> try expressionParser
 
 functionExpressionParser :: Parser FunctionExpression
 functionExpressionParser =

@@ -32,6 +32,9 @@ isEValue :: L.Expression -> Bool
 isEValue (L.EValue _) = True
 isEValue _ = False
 
+arrayToScalar :: L.Value -> L.Value
+arrayToScalar (L.Array [1] [v]) = v
+arrayToScalar v = v
 
 evalFunctionExpression :: L.FunctionExpression -> L.Function
 evalFunctionExpression (L.BuiltInFunction _ f) = f
@@ -42,12 +45,12 @@ evalFunctionExpression (L.DOpF (L.DyadicOperator _ _ f) fexp1 fexp2) = evalFunct
 -- | step evaluates a single expression
 stepE :: (MonadError RunTimeError m, MonadState Store m) => L.Expression -> m L.Expression
 stepE (L.EValue val) = do
-  return $ L.EValue val
+  return $ L.EValue (arrayToScalar val)
 
 stepE (L.EVariable var) = do
   store <- get
   case Map.lookup var store of
-    Just val -> return $ L.EValue val
+    Just val -> return $ L.EValue (arrayToScalar val)
     Nothing -> throwError $ UndefinedVariable "Undefined variable"
 
 stepE (L.EArray exps) = do
@@ -59,7 +62,7 @@ stepE (L.EArray exps) = do
       e' <- stepE e
       case e' of
         (L.EValue val) -> case val of
-          (L.Scalar _) -> return $ L.EValue val
+          (L.Scalar _) -> return $ L.EValue (arrayToScalar val)
           (L.Array shape vals) -> return $ L.EValue (L.Array (1 : shape) vals)
         _ -> return $ L.EArray [e']
     
@@ -73,19 +76,19 @@ stepE (L.EArray exps) = do
 stepE (L.EBind var val) = do
   store <- get
   put $ Map.insert var val store
-  return $ L.EValue val
+  return $ L.EValue (arrayToScalar val)
 
 stepE (L.EMonadic fexp e) = do
   exp' <- stepE e
   case exp' of
-    (L.EValue val) -> return $ L.EValue (L.applyMonadic (evalFunctionExpression fexp) val)
+    (L.EValue val) -> return $ L.EValue $ arrayToScalar (L.applyMonadic (evalFunctionExpression fexp) val)
     _ -> return $ L.EMonadic fexp exp'
 
 stepE (L.EDyadic fexp exp1 exp2) = do
   exp1' <- stepE exp1
   exp2' <- stepE exp2
   case (exp1', exp2') of
-    (L.EValue val1, L.EValue val2) -> return $ L.EValue (L.applyDyadic (evalFunctionExpression fexp) val1 val2)
+    (L.EValue val1, L.EValue val2) -> return $ L.EValue $ arrayToScalar (L.applyDyadic (evalFunctionExpression fexp) val1 val2)
     _ -> return $ L.EDyadic fexp exp1' exp2'
 
 
