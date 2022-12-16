@@ -20,7 +20,6 @@ main = hspec $ do
     it "parses a float with -ve sign" $ do parse' Parser.float "¯123.456" `shouldBe` (-123.456)
     it "parses a float without sign" $ do parse' Parser.float "123.456" `shouldBe` 123.456
     it "parses a float with no whole part" $ do parse' Parser.float ".456" `shouldBe` 0.456
-  -- it "parses a float with no fractional part" $ do parse' Parser.float "123." `shouldNotBe` 123.0
 
   describe "parse scalar value" $ do
     it "parses a scalar value" $ do parse' Parser.scalarParser "123" `shouldBe` Number 123
@@ -48,11 +47,20 @@ main = hspec $ do
 
   describe "parse function expressions" $ do
     it "parses a monadic operator with dyadic function" $ do parse' Parser.expressionParser "+/ 1 2 3" `shouldBe` EMonadic (MOpF (MonadicOperator "/" "reduce" reduce) (BuiltInFunction "+" dummyFunction)) (EArray [EValue (Scalar (Number 1.0)), EValue (Scalar (Number 2.0)), EValue (Scalar (Number 3.0))])
-  
-  describe "stepper tests" $ do 
-    it "interprets a simple expression" $ do run "1 + 2 + 3" `shouldBe` "6.0"
 
   describe "combined parser + stepper tests" $ do
-    it "parses and interprets a simple expression" $ do run "1 + 2 + 3" `shouldBe` "6.0"
-    it "parses and interprets a simple expression #2" $ do run "1 2 3 + 4 5 6" `shouldBe` "5.0 7.0 9.0"
-    it "parses and interprets a simple expression #3" $ do run "2 3 ⍴ 3 4 5" `shouldBe` "3.0 4.0 5.0\n3.0 4.0 5.0"
+    it "parses and interprets an expression (simple addition)" $ do run "1 + 2 + 3" `shouldBe` "6.0"
+    it "parses and interprets an expression #2 (addition of two array)" $ do run "1 2 3 + 4 5 6" `shouldBe` "5.0 7.0 9.0"
+    it "parses and interprets an expression #3 (reshape)" $ do run "2 3 ⍴ 3 4 5" `shouldBe` "3.0 4.0 5.0\n3.0 4.0 5.0"
+    it "parses and interprets an expression #4 (addition and reshape over arrays)" $ do run "2 3 ⍴ 3 4 5 + 1 2 3" `shouldBe` "4.0 6.0 8.0\n4.0 6.0 8.0"
+    it "parses and interprets an expression #4.5 (shape of)" $ do run "⍴ 2 3 ⍴ 3 4 5" `shouldBe` "2.0 3.0"
+    it "parses and interprets an expression #5" $ do run "-+-+5" `shouldBe` "5.0"
+    it "parses and interprets an expression #6 (pi times)" $ do run "○ 2" `shouldBe` "6.2831855"
+    it "parses and interprets an expression #7" $ do run "⌊ 2.5" `shouldBe` "2.0"
+    it "parses and interprets an expression #8" $ do run "⌈ 2.8" `shouldBe` "3.0"
+    it "parses and interprets an expression #9" $ do run "⌊ 2.5 3.5 4.5" `shouldBe` "2.0 3.0 4.0"
+    it "parses and interprets an expression #10" $ do run "⌈ 2.5 3.5 4.5" `shouldBe` "3.0 4.0 5.0"
+    it "parses and interprets an expression #11 (reciprocal)" $ do run "÷ 10" `shouldBe` "0.1"
+    it "parses and interprets an expression #12 (array reciprocal)" $ do run "÷ 10 20 30" `shouldBe` "0.1 5.0e-2 3.3333335e-2"
+    it "parses and interprets an expression #13 (divide)" $ do run "20 ÷ 10" `shouldBe` "2.0"
+    it "parses and interprets an expression #14 (array divide)" $ do run "20 40 60 ÷ 10 20 30" `shouldBe` "2.0 2.0 2.0"

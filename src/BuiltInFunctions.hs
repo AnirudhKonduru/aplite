@@ -11,7 +11,7 @@ makeMonadicFunction f (Array shape' xs) = Array shape' (map (makeMonadicFunction
 makeMonadicFunction _f (Scalar (Char _)) = error "domain error"
 
 makeDyadicFunction :: (Float -> Float -> Float) -> (Value -> Value -> Value)
-makeDyadicFunction _f (Scalar (Number x)) (Scalar (Number y)) = Scalar (Number (x + y))
+makeDyadicFunction f (Scalar (Number x)) (Scalar (Number y)) = Scalar (Number (f x y))
 makeDyadicFunction f (Scalar (Number x)) (Array shape' xs) = Array shape' (map (makeDyadicFunction f (Scalar (Number x))) xs)
 makeDyadicFunction f (Array shape' xs) (Scalar (Number x)) = Array shape' (map (flip (makeDyadicFunction f) (Scalar (Number x))) xs)
 makeDyadicFunction f (Array shape1 xs) (Array shape2 ys) | shape1 == shape2 = Array shape1 (zipWith (makeDyadicFunction f) xs ys)

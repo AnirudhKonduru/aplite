@@ -44,15 +44,19 @@ type Env = Map String Int
 emptyEnv :: Env
 emptyEnv = Map.empty
 
+-- our Parser type is a StateT transformer over a ParsecT transformer
+-- The StateT transformer keeps track of the current environment (This is not used yet)
 type Parser a = StateT Env (ParsecT Void String Identity) a
 
--- | parse a string with a given parser
-parseTest' :: (Show a) => StateT Env (ParsecT Void String Identity) a -> String -> IO ()
+-- | parse a string with a given parser and print it out
+parseTest' :: (Show a) => Parser a -> String -> IO ()
 parseTest' p = Text.Megaparsec.parseTest $ evalStateT p Map.empty
 
+-- | parse a string with a given parser
 parse :: Parser a -> String -> Either (ParseErrorBundle String Void) a
 parse p = runParser (evalStateT p Map.empty) ""
 
+-- | parse and pretty print
 parse' :: Parser a -> String -> a
 parse' p e = case runParser (evalStateT p Map.empty) "" e of
   Left err -> error (show err)
@@ -83,20 +87,16 @@ float =
     float' :: Parser String
     float' = (++) <$> option "0" (some numberChar) <*> ((:) <$> char '.' <*> some numberChar)
 
-sc :: Parser ()
-sc =
-  L.space
-    C.hspace1
-    (L.skipLineComment "⍝")
-    (L.skipBlockComment "⍝" "⍝")
-
+-- | Parse using a parser and consume any trailing whitespace
 lexeme :: Parser a -> Parser a
-lexeme = L.lexeme sc
+lexeme = L.lexeme $ L.space C.hspace1 (L.skipLineComment "⍝") (L.skipBlockComment "⍝" "⍝")
 
 {-
 parsec's try combinator is used to try a parser, if it fails, it backtracks to the previous state
 this is necessary because Parsec by default only does LL(1) parsing, which means it only looks at the first character of a token
 -}
+
+-- Parsers for APL types and expressions
 
 scalarParser :: Parser Scalar
 scalarParser =
@@ -108,16 +108,17 @@ valueParser :: Parser Value
 valueParser = lexeme $ try arrayParser <|> try (Scalar <$> scalarParser)
 
 arrayParser :: Parser Value
-arrayParser = naked $ lexeme $ try (arrayOf <$> valuesParser)
+arrayParser = maybeEnclosed $ lexeme $ try (arrayOf <$> valuesParser)
 
 arrayOf :: [Value] -> Value
 arrayOf vs = Array [length vs] vs
 
+-- | Parse an expression that is enclosed in parentheses
 enclosed :: Parser a -> Parser a
 enclosed = lexeme . between (char '(') (char ')')
 
-naked :: Parser a -> Parser a
-naked p = lexeme $ try (enclosed p) <|> p
+maybeEnclosed :: Parser a -> Parser a
+maybeEnclosed p = lexeme $ try (enclosed p) <|> p
 
 builtInFunctionChar :: Parser Char
 builtInFunctionChar = lexeme $ oneOf aplFunctions
@@ -141,31 +142,8 @@ valuesParser = try $ (:) <$> singleValueParser <*> some singleValueParser
 variableParser :: Parser String
 variableParser = lexeme $ (:) <$> C.letterChar <*> many C.alphaNumChar
 
--- operandParser :: Parser Expression
--- operandParser =
---     try (EValue <$> valueParser)
---   <|> try (enclosed expressionParser)
---     <|> try (EArray <$> many expressionParser)
---     <|> try (EVariable <$> variableParser)
-
-eValueParser :: Parser Expression
-eValueParser =
-  lexeme $
-    try
-      ( EArray
-          <$> many
-            ( try (enclosed expressionParser)
-                <|> try (EArray <$> many expressionParser)
-                <|> try (EValue . Scalar <$> scalarParser)
-                <|> try (EVariable <$> variableParser)
-            )
-      )
-
--- <|> try (EValue <$> arrayParser)
--- try (EArray <$> many expressionParser)
---  <|> try (EValue <$> valueParser)
---  <|> try (EArray <$> many expressionParser)
-
+-- | A term is anything that can show up as arguments
+-- to a function (or function expression)
 termParser :: Parser Expression
 termParser =
   lexeme $
@@ -178,6 +156,9 @@ termParser =
       <|> try (enclosed expressionParser)
       <|> try expressionParser
 
+-- | Parse a function expression.
+-- Here the terms are functions, and they can be separated by
+-- operators (dyadic or monadic, infix or postfix).
 functionExpressionParser :: Parser FunctionExpression
 functionExpressionParser =
   makeExprParser
@@ -186,6 +167,10 @@ functionExpressionParser =
       [Postfix (MOpF <$> builtInMonadicOperatorParser)]
     ]
 
+
+-- | Parse an expression.
+-- Here the terms are values, and they can be separated by
+-- functions expressions (which can be built in functions or operator chains)
 expressionParser :: Parser Expression
 expressionParser =
   makeExprParser
@@ -196,33 +181,9 @@ expressionParser =
       [ -- monadic functions
         Prefix (EMonadic <$> functionExpressionParser)
       ]
-      -- monadic operators
-      -- Prefix (EMonadic . MOpr <$> operator)
     ]
 
--- monadicFunctionTermParser :: Parser FunctionExpression
--- monadicFunctionTermParser = try builtInFunctionParser
---   <|> try (enclosed monadicFunctionParser)
---   <|> try (flip MOp <$> dyadicFunctionParser <*> builtInMonadicOperatorParser)
-
--- monadicFunctionParser :: Parser FunctionExpression
--- monadicFunctionParser = try (flip MOpDf <$> dyadicFunctionParser <*> builtInMonadicOperatorParser)
---   <|> try (enclosed monadicFunctionParser)
---   <|> try builtInMonadicFunctionParser
-
--- dyadicFunctionParser :: Parser FunctionExpression
--- dyadicFunctionParser =
---   lexeme $
---     makeExprParser
---       builtInDyadicFunctionParser
---       [ [ -- Postfix (DOp <$> builtInMonadicOperatorParser),
---           InfixL (DOpDfDf <$> builtInDyadicOperatorParser)
---         ]
---       ]
-
-ciel :: Float -> Float
-ciel = toEnum . ceiling
-
+-- | Parse a built in function, which is a single character
 builtInFunctionParser :: Parser FunctionExpression
 builtInFunctionParser = do
   c <- builtInFunctionChar
@@ -232,6 +193,7 @@ builtInFunctionParser = do
     Just builtInFunc -> return builtInFunc
     Nothing -> error "builtInFunctionParser: not found"
 
+-- | Parse a built in monadic operator, which is a single character
 builtInMonadicOperatorParser :: Parser MonadicOperator
 builtInMonadicOperatorParser = lexeme $ do
   c <- builtInMonadicOperatorChar
@@ -240,6 +202,7 @@ builtInMonadicOperatorParser = lexeme $ do
     '\\' -> ("scan", Bio.scan)
     _ -> error "builtInOperatorParser: impossible"
 
+-- | Parse a built in dyadic operator, which is a single character
 builtInDyadicOperatorParser :: Parser DyadicOperator
 builtInDyadicOperatorParser = lexeme $ do
   c <- builtInDyadicOperatorChar
@@ -254,5 +217,7 @@ valuesParser' = try $ some singleValueParser
   where
     singleValueParser = try (EArray <$> enclosed valuesParser') <|> try (EValue . Scalar <$> scalarParser) <|> try (enclosed expressionParser)
 
+
+-- | Parse a complete expression, including any trailing whitespace
 complete :: Parser a -> Parser a
 complete p = lexeme $ p <* eof
