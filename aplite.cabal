@@ -9,9 +9,9 @@ version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/aplite#readme>
 homepage:       https://github.com/githubuser/aplite#readme
 bug-reports:    https://github.com/githubuser/aplite/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2022 Author name here
+author:         Anirudh Konduru, Revathi Viayaraghavan
+maintainer:     akonduru@seas.upenn.edu, revathiv@seas.upenn.edu
+copyright:      2022 Anirudh Konduru, Revathi Viayaraghavan
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -31,7 +31,6 @@ library
       KeyMapping
       Language
       MkParser
-      UI
   other-modules:
       Paths_aplite
   hs-source-dirs:
