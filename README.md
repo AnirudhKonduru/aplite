@@ -23,3 +23,5 @@ Authors:
 - split: helper functions for reshaping arrays (ex., `chunksOf`)
 - prettyprinter: Library for pretty printing. Used for printing APL expressions and functions.
 - containers: for Data.Map
+- brick: for Brick TUI
+- vty: for for graphics-vty (that Brick is built upon) for handling events
