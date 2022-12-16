@@ -3,6 +3,7 @@
 A parser and interpreter for a subset of APL.
 
 Authors:
+
 - Anirudh Konduru, akonduru@seas.upenn.edu
 - Revathi Vijayaraghavan, revathiv@seas.upenn.edu
 
@@ -15,8 +16,8 @@ Authors:
 - The src/KeyMapping.hs has the Keyboard mappings and objects for APL characters
 - The src/UI.hs has the UI for the app
 
-
 ### Dependencies
+
 - MegaParsec: for all our parsing needs.
 - parser-combinators: some helper combinators to help with parsing.
 - mtl: For Monad transformers (StateT, ExceptT)
@@ -27,3 +28,9 @@ Authors:
 - containers: for Data.Map
 - brick: for Brick TUI
 - vty: for for graphics-vty (that Brick is built upon) for handling events
+
+### Running the app
+
+```
+stack build --exec "aplite-exe"
+```
