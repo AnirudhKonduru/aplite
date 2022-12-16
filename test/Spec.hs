@@ -22,7 +22,7 @@ main = hspec $ do
   -- it "parses a float with no fractional part" $ do parse' Parser.float "123." `shouldNotBe` 123.0
 
   describe "parse scalar value" $ do
-    it "parses a scalar value" $ do parse' Parser.scalarParser "123" `shouldBe` (Number 123)
+    it "parses a scalar value" $ do parse' Parser.scalarParser "123" `shouldBe` parse' Parser.scalarParser "123" `shouldBe` Number 123
 
   describe "parse simple array values" $ do
     it "parses an array #1" $ do parse' Parser.arrayParser "1 2 3" `shouldBe` Array [3] [Scalar $ Number 1, Scalar $ Number 2, Scalar $ Number 3]

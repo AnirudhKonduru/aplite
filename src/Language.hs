@@ -143,7 +143,7 @@ data Expression
   | EValue Value
   | EMonadic FunctionExpression Expression
   | EDyadic FunctionExpression Expression Expression
-  | EBind String Expression
+  | EBind String Value
   | EArray [Expression]
   deriving (Show, Eq)
 
