@@ -2,9 +2,9 @@ name: aplite
 version: 0.1.0.0
 github: "githubuser/aplite"
 license: BSD3
-author: "Author name here"
-maintainer: "example@example.com"
-copyright: "2022 Author name here"
+author: "Anirudh Konduru, Revathi Viayaraghavan"
+maintainer: "akonduru@seas.upenn.edu, revathiv@seas.upenn.edu"
+copyright: "2022 Anirudh Konduru, Revathi Viayaraghavan"
 
 extra-source-files:
   - README.md
