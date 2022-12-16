@@ -28,7 +28,6 @@ dependencies:
 - math-functions >= 0.3.4 && < 0.3.5
 - gamma
 - split >= 0.2.3 && < 0.2.4
-- orthotope >= 0.1.2 && < 0.1.3
 - prettyprinter >= 1.7 && < 1.8
 
 ghc-options:

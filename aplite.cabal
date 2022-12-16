@@ -27,6 +27,7 @@ library
   exposed-modules:
       BuiltInFunctions
       BuiltInOperators
+      Eval
       Language
       Lib
       MkParser
@@ -43,7 +44,6 @@ library
     , math-functions ==0.3.4.*
     , megaparsec >=9.0.0 && <10
     , mtl ==2.2.*
-    , orthotope ==0.1.2.*
     , parser-combinators ==1.3.*
     , prettyprinter ==1.7.*
     , split ==0.2.3.*
@@ -64,7 +64,6 @@ executable aplite-exe
     , math-functions ==0.3.4.*
     , megaparsec >=9.0.0 && <10
     , mtl ==2.2.*
-    , orthotope ==0.1.2.*
     , parser-combinators ==1.3.*
     , prettyprinter ==1.7.*
     , split ==0.2.3.*
@@ -90,7 +89,6 @@ test-suite aplite-test
     , math-functions ==0.3.4.*
     , megaparsec >=9.0.0 && <10
     , mtl ==2.2.*
-    , orthotope ==0.1.2.*
     , parser-combinators ==1.3.*
     , prettyprinter ==1.7.*
     , split ==0.2.3.*
