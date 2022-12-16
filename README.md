@@ -12,6 +12,8 @@ Authors:
 - The Parser is defined in src/Parser.hs. This uses MegaParsec to parse strings representing APL expressions into it's AST.
 - Most computation in APL happens in the form of _functions_ (that convert values to other values) and _operators_, that convert functions to other functions. Some of the built-in functions and operators are defined and implemented in src/BuiltInFunctions.hs and src/BuiltInOperators.hs, respectively.
 - The src/Eval.hs contains the functions necessary to run APL code, once it has been parsed into an APL Expression type.
+- The src/KeyMapping.hs has the Keyboard mappings and objects for APL characters
+- The src/UI.hs has the UI for the app
 
 
 ### Dependencies
