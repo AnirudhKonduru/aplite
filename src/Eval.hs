@@ -7,9 +7,8 @@ import Control.Monad.State (MonadState (..), State, runState)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Language as L
+import Language (print)
 import MkParser (expressionParser, parse')
-
--- type Var = String
 
 type Store = Map String L.Value
 
@@ -102,23 +101,17 @@ final :: L.Expression -> Bool
 final (L.EValue _) = True
 final _ = False
 
--- | run
-evalE :: L.Expression -> IO ()
-evalE e = do
-  let (result, _) = step e Map.empty
-  case result of
-    Left err -> print err
-    Right (L.EValue val) -> print val
-    Right expr -> evalE expr
 
+evalE :: L.Expression -> String
+evalE e = case step e Map.empty of
+  (Left err, _) -> show err
+  (Right (L.EValue val), _) -> Language.print (L.EValue val)
+  (Right expr, _) -> evalE expr
 
-dummyFunction :: L.Function
-dummyFunction = L.AmbiguousF id const
-
--- take string, parse and return IO
-run :: String -> IO ()
+run :: String -> String
 run = evalE . parse' expressionParser
 
--- >>> run "2 + 3"
+
+
 
 
